@@ -5,9 +5,9 @@ edits their own medical card; an assigned doctor (linked via `CareLink`) can vie
 and add clinical data to it. Built with Java 17, Spring Boot 3.2, MySQL 8, JWT
 auth, Liquibase, MapStruct, and a small custom AOP audit layer.
 
-The request-flow diagram below was hand-drawn in draw.io; the
-entity-relationship diagram is rendered directly from Mermaid source, so it
-always stays aligned.
+Both diagrams below are hand-drawn (draw.io for the request flow, plain SVG
+for the ER diagram) rather than auto-laid-out, so every connector lands
+exactly where it should.
 
 ---
 
@@ -63,85 +63,7 @@ com.vitaliy.medcard
 
 ## 4. Entity-relationship diagram
 
-```mermaid
-erDiagram
-    USER ||--o| PATIENT_PROFILE : "has"
-    USER ||--o{ CARE_LINK : "doctor in"
-    PATIENT_PROFILE ||--o{ CARE_LINK : "patient in"
-    PATIENT_PROFILE ||--o{ ALLERGY : "has"
-    PATIENT_PROFILE ||--o{ CONDITION : "has"
-    PATIENT_PROFILE ||--o{ VISIT : "has"
-    PATIENT_PROFILE ||--o{ DOCUMENT : "has"
-    PATIENT_PROFILE ||--o{ REMINDER : "has"
-    PATIENT_PROFILE ||--o{ SHARE_LINK : "has"
-    USER ||--o{ VISIT : "recorded by (doctor)"
-    USER ||--o{ DOCUMENT : "uploaded by"
-    USER ||--o{ SHARE_LINK : "issued by"
-
-    USER {
-        Long id PK
-        string email
-        UserRole role
-    }
-    PATIENT_PROFILE {
-        Long id PK
-        Long user_id FK
-        date dateOfBirth
-        string bloodGroup
-    }
-    CARE_LINK {
-        Long id PK
-        Long doctor_id FK
-        Long patient_id FK
-    }
-    ALLERGY {
-        Long id PK
-        Long patient_id FK
-        string name
-        AllergySeverity severity
-    }
-    CONDITION {
-        Long id PK
-        Long patient_id FK
-        string name
-        ConditionStatus status
-    }
-    VISIT {
-        Long id PK
-        Long patient_id FK
-        Long doctor_id FK
-        datetime visitDate
-        string diagnosis
-    }
-    DOCUMENT {
-        Long id PK
-        Long patient_id FK
-        Long uploaded_by FK
-        DocumentType documentType
-        string storedFileName
-    }
-    REMINDER {
-        Long id PK
-        Long patient_id FK
-        ReminderType type
-        datetime dueAt
-        boolean notified
-    }
-    SHARE_LINK {
-        Long id PK
-        Long patient_id FK
-        Long created_by FK
-        string token
-        datetime expiresAt
-    }
-    AUDIT_ENTRY {
-        Long id PK
-        string performedByEmail
-        string action
-        string outcome
-        datetime timestamp
-    }
-```
+![Entity-relationship diagram](er-diagram.svg)
 
 `AUDIT_ENTRY` is drawn with no relationship lines on purpose — it has no FK at
 all, just a `performedByEmail` string, so a row survives even after the user
