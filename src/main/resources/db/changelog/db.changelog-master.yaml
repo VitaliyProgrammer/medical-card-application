@@ -1,3 +1,7 @@
 databaseChangeLog:
   - include:
       file: db/changelog/changes/create_users_table.yaml
+  - include:
+      file: db/changelog/changes/create_patient_profiles_table.yaml
+  - include:
+      file: db/changelog/changes/create_care_links_table.yaml
