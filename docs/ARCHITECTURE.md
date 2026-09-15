@@ -5,8 +5,9 @@ edits their own medical card; an assigned doctor (linked via `CareLink`) can vie
 and add clinical data to it. Built with Java 17, Spring Boot 3.2, MySQL 8, JWT
 auth, Liquibase, MapStruct, and a small custom AOP audit layer.
 
-This document is meant as a source for hand-redrawing diagrams in draw.io —
-boxes and arrows are kept simple on purpose.
+The request-flow diagram below was hand-drawn in draw.io; the
+entity-relationship diagram is rendered directly from Mermaid source, so it
+always stays aligned.
 
 ---
 
@@ -62,54 +63,89 @@ com.vitaliy.medcard
 
 ## 4. Entity-relationship diagram
 
-```
- ┌───────────┐  1        0..1  ┌──────────────────┐
- │   User      │────────────────│  PatientProfile     │
- │  (role:     │                │  (dateOfBirth,        │
- │  PATIENT/   │                │   bloodGroup,           │
- │  DOCTOR/    │                │   emergencyContact...)  │
- │  ADMIN)     │                └─────────┬──────────────┘
- └─────┬───────┘                          │
-       │                                   │ 1
-       │ doctor  1..*                      │
-       │                                   ├────────────── 0..* ──▶ ┌────────────┐
-       │                                   │                          │  Allergy      │
-       │                     ┌─────────────┤                          └────────────┘
-       │                     │             │
-       │                     │             ├────────────── 0..* ──▶ ┌────────────┐
-       │                     │             │                          │ Condition     │
-       │                     │             │                          └────────────┘
-       ▼                     │             │
- ┌───────────┐   0..*        │             ├────────────── 0..* ──▶ ┌────────────┐
- │  CareLink   │◀─────────────┘             │                          │  Reminder     │
- │ (doctor +   │        patient             │                          └────────────┘
- │  patient,   │                            │
- │  unique      │                           ├────────────── 0..* ──▶ ┌────────────┐
- │  pair)        │                          │                          │  Visit         │
- └───────────┘                              │                          │ (+ doctor FK)  │
-                                             │                          └────────────┘
-                                             │
-                                             ├────────────── 0..* ──▶ ┌────────────┐
-                                             │                          │  Document      │
-                                             │                          │ (+ uploadedBy  │
-                                             │                          │   FK)           │
-                                             │                          └────────────┘
-                                             │
-                                             └────────────── 0..* ──▶ ┌────────────┐
-                                                                        │  ShareLink     │
-                                                                        │ (+ createdBy   │
-                                                                        │   FK, token,    │
-                                                                        │   expiresAt)     │
-                                                                        └────────────┘
+```mermaid
+erDiagram
+    USER ||--o| PATIENT_PROFILE : "has"
+    USER ||--o{ CARE_LINK : "doctor in"
+    PATIENT_PROFILE ||--o{ CARE_LINK : "patient in"
+    PATIENT_PROFILE ||--o{ ALLERGY : "has"
+    PATIENT_PROFILE ||--o{ CONDITION : "has"
+    PATIENT_PROFILE ||--o{ VISIT : "has"
+    PATIENT_PROFILE ||--o{ DOCUMENT : "has"
+    PATIENT_PROFILE ||--o{ REMINDER : "has"
+    PATIENT_PROFILE ||--o{ SHARE_LINK : "has"
+    USER ||--o{ VISIT : "recorded by (doctor)"
+    USER ||--o{ DOCUMENT : "uploaded by"
+    USER ||--o{ SHARE_LINK : "issued by"
 
- ┌────────────────┐
- │  AuditEntry       │   standalone table — no FK, just performedByEmail (string)
- │  (action,          │   so a row always survives even if the user is later deleted
- │   methodName,        │
- │   targetId,           │
- │   outcome, timestamp) │
- └────────────────┘
+    USER {
+        Long id PK
+        string email
+        UserRole role
+    }
+    PATIENT_PROFILE {
+        Long id PK
+        Long user_id FK
+        date dateOfBirth
+        string bloodGroup
+    }
+    CARE_LINK {
+        Long id PK
+        Long doctor_id FK
+        Long patient_id FK
+    }
+    ALLERGY {
+        Long id PK
+        Long patient_id FK
+        string name
+        AllergySeverity severity
+    }
+    CONDITION {
+        Long id PK
+        Long patient_id FK
+        string name
+        ConditionStatus status
+    }
+    VISIT {
+        Long id PK
+        Long patient_id FK
+        Long doctor_id FK
+        datetime visitDate
+        string diagnosis
+    }
+    DOCUMENT {
+        Long id PK
+        Long patient_id FK
+        Long uploaded_by FK
+        DocumentType documentType
+        string storedFileName
+    }
+    REMINDER {
+        Long id PK
+        Long patient_id FK
+        ReminderType type
+        datetime dueAt
+        boolean notified
+    }
+    SHARE_LINK {
+        Long id PK
+        Long patient_id FK
+        Long created_by FK
+        string token
+        datetime expiresAt
+    }
+    AUDIT_ENTRY {
+        Long id PK
+        string performedByEmail
+        string action
+        string outcome
+        datetime timestamp
+    }
 ```
+
+`AUDIT_ENTRY` is drawn with no relationship lines on purpose — it has no FK at
+all, just a `performedByEmail` string, so a row survives even after the user
+who triggered it is deleted.
 
 ---
 
