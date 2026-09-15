@@ -7,6 +7,7 @@ import com.vitaliy.medcard.exception.DocumentNotFoundException;
 import com.vitaliy.medcard.exception.FileStorageException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
 import com.vitaliy.medcard.exception.InvalidCredentialsException;
+import com.vitaliy.medcard.exception.InvalidRefreshTokenException;
 import com.vitaliy.medcard.exception.JwtAuthenticationException;
 import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.exception.PdfGenerationException;
@@ -134,6 +135,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(JwtAuthenticationException.class)
     public ResponseEntity<Object> handleJwtAuthentication(JwtAuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<Object> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
     }
 

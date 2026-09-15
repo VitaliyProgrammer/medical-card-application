@@ -1,5 +1,6 @@
 package com.vitaliy.medcard.controller;
 
+import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
@@ -34,8 +35,22 @@ public class AuthenticationController {
 
     @PostMapping("/login")
     @ResponseStatus(HttpStatus.OK)
-    @Operation(summary = "Log in and receive a JWT access token")
+    @Operation(summary = "Log in and receive a short-lived access token plus a refresh token")
     public UserLoginResponseDto login(@RequestBody @Valid UserLoginRequestDto request) {
         return authenticationService.login(request);
+    }
+
+    @PostMapping("/refresh")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Exchange a refresh token for a new access/refresh token pair")
+    public UserLoginResponseDto refresh(@RequestBody @Valid RefreshTokenRequestDto request) {
+        return authenticationService.refresh(request);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Revoke a refresh token")
+    public void logout(@RequestBody @Valid RefreshTokenRequestDto request) {
+        authenticationService.logout(request);
     }
 }
