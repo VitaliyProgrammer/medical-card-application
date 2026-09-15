@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-allergies-table
+      author: vitaliy
+      changes:
+        - createTable:
+            tableName: allergies
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: patient_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: severity
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: allergies
+            baseColumnNames: patient_id
+            referencedTableName: patient_profiles
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_allergies_patient

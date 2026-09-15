@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-care-links-table
+      author: vitaliy
+      changes:
+        - createTable:
+            tableName: care_links
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: doctor_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: patient_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assigned_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: care_links
+            baseColumnNames: doctor_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_care_links_doctor
+        - addForeignKeyConstraint:
+            baseTableName: care_links
+            baseColumnNames: patient_id
+            referencedTableName: patient_profiles
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_care_links_patient
+        - addUniqueConstraint:
+            tableName: care_links
+            columnNames: doctor_id, patient_id
+            constraintName: uq_care_links_doctor_patient

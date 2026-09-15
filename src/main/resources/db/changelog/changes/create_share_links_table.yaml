@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-share-links-table
+      author: vitaliy
+      changes:
+        - createTable:
+            tableName: share_links
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: patient_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token
+                  type: VARCHAR(36)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: expires_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: share_links
+            baseColumnNames: patient_id
+            referencedTableName: patient_profiles
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_share_links_patient
+        - addForeignKeyConstraint:
+            baseTableName: share_links
+            baseColumnNames: created_by
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_share_links_created_by

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Medical Card</title>
+    <style>
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #222222; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        h2 { font-size: 14px; margin-top: 20px; border-bottom: 1px solid #cccccc; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #eeeeee; font-size: 11px; }
+        .label { color: #666666; }
+        .footer { margin-top: 30px; font-size: 10px; color: #999999; }
+    </style>
+</head>
+<body>
+    <h1 th:text="${patientFullName}">Patient Name</h1>
+    <p>
+        <span class="label">Date of birth:</span> <span th:text="${dateOfBirth}">-</span>
+        (<span th:text="${age}">-</span> years) |
+        <span class="label">Blood group:</span> <span th:text="${bloodGroup}">-</span>
+    </p>
+    <p>
+        <span class="label">Emergency contact:</span>
+        <span th:text="${emergencyContactName}">-</span>
+        <span th:text="${emergencyContactPhone}">-</span>
+    </p>
+
+    <h2>Allergies</h2>
+    <table>
+        <tr><th>Name</th><th>Severity</th></tr>
+        <tr th:each="allergy : ${allergies}">
+            <td th:text="${allergy.name}">-</td>
+            <td th:text="${allergy.severity}">-</td>
+        </tr>
+        <tr th:if="${allergies.isEmpty()}"><td colspan="2">No known allergies</td></tr>
+    </table>
+
+    <h2>Chronic conditions</h2>
+    <table>
+        <tr><th>Name</th><th>Status</th><th>Diagnosed</th></tr>
+        <tr th:each="condition : ${conditions}">
+            <td th:text="${condition.name}">-</td>
+            <td th:text="${condition.status}">-</td>
+            <td th:text="${condition.diagnosedAt}">-</td>
+        </tr>
+        <tr th:if="${conditions.isEmpty()}"><td colspan="3">No chronic conditions recorded</td></tr>
+    </table>
+
+    <h2>Visit history</h2>
+    <table>
+        <tr><th>Date</th><th>Doctor</th><th>Diagnosis</th></tr>
+        <tr th:each="visit : ${visits}">
+            <td th:text="${visit.visitDate}">-</td>
+            <td th:text="${visit.doctor.fullName}">-</td>
+            <td th:text="${visit.diagnosis}">-</td>
+        </tr>
+        <tr th:if="${visits.isEmpty()}"><td colspan="3">No visits recorded</td></tr>
+    </table>
+
+    <p class="footer" th:text="'Generated on ' + ${generatedAt}">Generated</p>
+</body>
+</html>

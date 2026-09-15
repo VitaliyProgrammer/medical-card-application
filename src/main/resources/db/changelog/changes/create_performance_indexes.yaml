@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-performance-indexes
+      author: vitaliy
+      changes:
+        - createIndex:
+            tableName: reminders
+            indexName: idx_reminders_notified_due_at
+            columns:
+              - column:
+                  name: notified
+              - column:
+                  name: due_at
+        - createIndex:
+            tableName: visits
+            indexName: idx_visits_patient_visit_date
+            columns:
+              - column:
+                  name: patient_id
+              - column:
+                  name: visit_date
+        - createIndex:
+            tableName: documents
+            indexName: idx_documents_patient_type
+            columns:
+              - column:
+                  name: patient_id
+              - column:
+                  name: document_type
+        - createIndex:
+            tableName: audit_entries
+            indexName: idx_audit_entries_timestamp
+            columns:
+              - column:
+                  name: timestamp
