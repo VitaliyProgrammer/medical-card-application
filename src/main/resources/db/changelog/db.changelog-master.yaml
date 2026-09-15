@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/changes/create_audit_entries_table.yaml
   - include:
       file: db/changelog/changes/create_reminders_table.yaml
+  - include:
+      file: db/changelog/changes/create_share_links_table.yaml
