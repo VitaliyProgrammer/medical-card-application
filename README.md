@@ -304,34 +304,6 @@ curl http://localhost:8080/api/patients/me \
   -H "Authorization: Bearer <token>"
 ```
 
-### 5. IDE-based run (optional, hybrid mode)
-
-The app can also run directly from the IDE (no `app` container) for faster
-iteration/debugging. It needs a local MySQL 8 on the standard port `3306`
-with a `medical_card_application` database and a matching user — either your
-own native MySQL install, or MySQL running in Docker on the standard port:
-
-```sql
-CREATE DATABASE IF NOT EXISTS medical_card_application;
-CREATE USER IF NOT EXISTS 'medcard_user'@'%' IDENTIFIED BY 'medcard_pass';
-GRANT ALL PRIVILEGES ON medical_card_application.* TO 'medcard_user'@'%';
-FLUSH PRIVILEGES;
-```
-
-MinIO still runs in Docker (there's no "native" MinIO):
-
-```bash
-docker compose up -d minio
-```
-
-`application.properties` already defaults to these local values
-(`localhost:3306`, `medcard_user`/`medcard_pass`, `localhost:9000`), so no
-extra IDE configuration or env vars are needed — just click Run. Don't also
-start the `app` or `mysqldb` services from `docker-compose.yml` at the same
-time as the IDE run; `docker-compose.yml` keeps its own MySQL container
-internal to the Docker network (no host port), so the two setups never
-collide on port `3306`.
-
 Register a second account with `"role": "DOCTOR"` to try the doctor-side
 endpoints (`/api/care-links`, viewing an assigned patient's card, recording a
 visit, etc.) — see Swagger UI for the full list.
