@@ -14,10 +14,10 @@
     <line x1="240" y1="95" x2="420" y2="95" marker-end="url(#arrow)"/>
 
     <!-- User -> CareLink -->
-    <polyline points="140,150 140,190 390,190 390,220" marker-end="url(#arrow)"/>
+    <polyline points="140,150 140,165 390,165 390,195" marker-end="url(#arrow)"/>
 
     <!-- PatientProfile -> CareLink -->
-    <polyline points="460,150 460,205 300,205 300,220" marker-end="url(#arrow)"/>
+    <polyline points="460,150 460,180 300,180 300,195" marker-end="url(#arrow)"/>
 
     <!-- PatientProfile -> bus -->
     <line x1="550" y1="150" x2="550" y2="230"/>
@@ -67,12 +67,12 @@
 
   <!-- CARE_LINK -->
   <g>
-    <rect x="235" y="220" width="220" height="90" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
-    <text x="345" y="242" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#0f172a">CARE_LINK</text>
-    <line x1="247" y1="252" x2="443" y2="252" stroke="#cbd5e1"/>
-    <text x="247" y="270" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#334155">id <tspan fill="#64748b">PK</tspan></text>
-    <text x="247" y="286" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#334155">doctor_id, patient_id <tspan fill="#64748b">FK</tspan></text>
-    <text x="247" y="302" font-family="ui-monospace, Consolas, monospace" font-size="10" fill="#64748b">unique (doctor, patient)</text>
+    <rect x="235" y="195" width="220" height="90" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+    <text x="345" y="217" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#0f172a">CARE_LINK</text>
+    <line x1="247" y1="227" x2="443" y2="227" stroke="#cbd5e1"/>
+    <text x="247" y="245" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#334155">id <tspan fill="#64748b">PK</tspan></text>
+    <text x="247" y="261" font-family="ui-monospace, Consolas, monospace" font-size="11" fill="#334155">doctor_id, patient_id <tspan fill="#64748b">FK</tspan></text>
+    <text x="247" y="277" font-family="ui-monospace, Consolas, monospace" font-size="10" fill="#64748b">unique (doctor, patient)</text>
   </g>
 
   <!-- ALLERGY -->
