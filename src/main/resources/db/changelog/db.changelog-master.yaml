@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/changes/create_visits_table.yaml
   - include:
       file: db/changelog/changes/create_documents_table.yaml
+  - include:
+      file: db/changelog/changes/create_audit_entries_table.yaml
