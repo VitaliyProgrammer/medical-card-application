@@ -5,3 +5,9 @@ databaseChangeLog:
       file: db/changelog/changes/create_patient_profiles_table.yaml
   - include:
       file: db/changelog/changes/create_care_links_table.yaml
+  - include:
+      file: db/changelog/changes/create_allergies_table.yaml
+  - include:
+      file: db/changelog/changes/create_conditions_table.yaml
+  - include:
+      file: db/changelog/changes/create_visits_table.yaml

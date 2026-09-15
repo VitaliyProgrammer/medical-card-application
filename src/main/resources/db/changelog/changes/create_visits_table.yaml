@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-visits-table
+      author: vitaliy
+      changes:
+        - createTable:
+            tableName: visits
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: patient_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: doctor_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visit_date
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: blood_pressure
+                  type: VARCHAR(20)
+              - column:
+                  name: heart_rate
+                  type: INT
+              - column:
+                  name: temperature_celsius
+                  type: DOUBLE
+              - column:
+                  name: weight_kg
+                  type: DOUBLE
+              - column:
+                  name: diagnosis
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notes
+                  type: TEXT
+        - addForeignKeyConstraint:
+            baseTableName: visits
+            baseColumnNames: patient_id
+            referencedTableName: patient_profiles
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_visits_patient
+        - addForeignKeyConstraint:
+            baseTableName: visits
+            baseColumnNames: doctor_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+            constraintName: fk_visits_doctor
