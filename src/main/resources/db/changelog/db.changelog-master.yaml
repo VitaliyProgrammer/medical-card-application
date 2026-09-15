@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/create_conditions_table.yaml
   - include:
       file: db/changelog/changes/create_visits_table.yaml
+  - include:
+      file: db/changelog/changes/create_documents_table.yaml
