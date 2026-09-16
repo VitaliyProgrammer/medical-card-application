@@ -14,10 +14,10 @@
     <line x1="240" y1="105" x2="420" y2="105" marker-end="url(#arrow)"/>
 
     <!-- User -> CareLink -->
-    <polyline points="140,170 140,185 390,185 390,215" marker-end="url(#arrow)"/>
+    <polyline points="140,170 140,185 375,185 375,215" marker-end="url(#arrow)"/>
 
     <!-- PatientProfile -> CareLink -->
-    <polyline points="460,170 460,200 300,200 300,215" marker-end="url(#arrow)"/>
+    <polyline points="460,170 460,200 285,200 285,215" marker-end="url(#arrow)"/>
 
     <!-- PatientProfile -> bus (real clearance below CareLink) -->
     <line x1="550" y1="170" x2="550" y2="370"/>
@@ -62,12 +62,12 @@
 
   <!-- CARE_LINK -->
   <g>
-    <rect x="235" y="215" width="220" height="110" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
-    <text x="345" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#0f172a">CARE_LINK</text>
-    <line x1="247" y1="252" x2="443" y2="252" stroke="#cbd5e1"/>
-    <text x="247" y="272" font-family="ui-monospace, Consolas, monospace" font-size="13" fill="#334155">id <tspan fill="#64748b">PK</tspan></text>
-    <text x="247" y="290" font-family="ui-monospace, Consolas, monospace" font-size="13" fill="#334155">doctor_id, patient_id <tspan fill="#64748b">FK</tspan></text>
-    <text x="247" y="308" font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#64748b">unique (doctor, patient)</text>
+    <rect x="220" y="215" width="220" height="110" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+    <text x="330" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#0f172a">CARE_LINK</text>
+    <line x1="232" y1="252" x2="428" y2="252" stroke="#cbd5e1"/>
+    <text x="232" y="272" font-family="ui-monospace, Consolas, monospace" font-size="13" fill="#334155">id <tspan fill="#64748b">PK</tspan></text>
+    <text x="232" y="290" font-family="ui-monospace, Consolas, monospace" font-size="13" fill="#334155">doctor_id, patient_id <tspan fill="#64748b">FK</tspan></text>
+    <text x="232" y="308" font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#64748b">unique (doctor, patient)</text>
   </g>
 
   <!-- ALLERGY -->
