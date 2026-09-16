@@ -1,6 +1,7 @@
 package com.vitaliy.medcard.aspect;
 
 import com.vitaliy.medcard.model.AuditEntry;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,8 +20,10 @@ public class AuditAspect {
 
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_FAILURE = "FAILURE";
+    private static final String METRIC_NAME = "audit_entries_total";
 
     private final AuditEntryWriter auditEntryWriter;
+    private final MeterRegistry meterRegistry;
 
     @Around("@annotation(audited)")
     public Object audit(ProceedingJoinPoint joinPoint, Audited audited) throws Throwable {
@@ -32,6 +35,8 @@ public class AuditAspect {
             throw exception;
         } finally {
             recordEntry(joinPoint, audited, outcome);
+            meterRegistry.counter(METRIC_NAME, "action", audited.action(), "outcome", outcome)
+                    .increment();
         }
     }
 

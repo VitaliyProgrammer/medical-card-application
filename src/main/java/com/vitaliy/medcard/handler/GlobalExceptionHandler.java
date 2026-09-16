@@ -7,6 +7,7 @@ import com.vitaliy.medcard.exception.DocumentNotFoundException;
 import com.vitaliy.medcard.exception.FileStorageException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
 import com.vitaliy.medcard.exception.InvalidCredentialsException;
+import com.vitaliy.medcard.exception.InvalidRefreshTokenException;
 import com.vitaliy.medcard.exception.JwtAuthenticationException;
 import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.exception.PdfGenerationException;
@@ -25,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -135,6 +137,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(JwtAuthenticationException.class)
     public ResponseEntity<Object> handleJwtAuthentication(JwtAuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<Object> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(body("You don't have permission to perform this action!"));
     }
 
     @ExceptionHandler(Exception.class)

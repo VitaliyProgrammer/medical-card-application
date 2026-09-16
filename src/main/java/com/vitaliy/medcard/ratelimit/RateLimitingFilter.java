@@ -15,7 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private static final Set<String> LIMITED_PATHS =
-            Set.of("/api/auth/login", "/api/auth/registration");
+            Set.of("/api/auth/login", "/api/auth/registration", "/api/auth/refresh");
 
     private final LoginRateLimiter loginRateLimiter;
 

@@ -10,14 +10,17 @@ import com.vitaliy.medcard.model.AuditEntry;
 import com.vitaliy.medcard.model.status.UserRole;
 import com.vitaliy.medcard.repository.AuditEntryRepository;
 import com.vitaliy.medcard.service.AuthenticationService;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.Comparator;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
-@Transactional
+@Transactional(isolation = Isolation.READ_COMMITTED)
 class AuditAspectTest extends IntegrationTestBase {
 
     @Autowired
@@ -25,6 +28,9 @@ class AuditAspectTest extends IntegrationTestBase {
 
     @Autowired
     private AuditEntryRepository auditEntryRepository;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @Test
     void successfulRegistration_writesASuccessAuditEntry() {
@@ -40,11 +46,15 @@ class AuditAspectTest extends IntegrationTestBase {
         List<AuditEntry> entries = auditEntryRepository.findAll();
         AuditEntry entry = entries.stream()
                 .filter(e -> "REGISTER_USER".equals(e.getAction()))
-                .findFirst()
+                .max(Comparator.comparing(AuditEntry::getId))
                 .orElseThrow();
 
         assertThat(entry.getOutcome()).isEqualTo("SUCCESS");
         assertThat(entry.getMethodName()).contains("register");
+
+        double count = meterRegistry.counter("audit_entries_total",
+                "action", "REGISTER_USER", "outcome", "SUCCESS").count();
+        assertThat(count).isGreaterThanOrEqualTo(1.0);
     }
 
     @Test
@@ -61,7 +71,7 @@ class AuditAspectTest extends IntegrationTestBase {
         List<AuditEntry> entries = auditEntryRepository.findAll();
         AuditEntry entry = entries.stream()
                 .filter(e -> "REGISTER_USER".equals(e.getAction()))
-                .findFirst()
+                .max(Comparator.comparing(AuditEntry::getId))
                 .orElseThrow();
 
         assertThat(entry.getOutcome()).isEqualTo("FAILURE");

@@ -8,6 +8,5 @@ public interface PatientCardExportService {
 
     byte[] exportCardForDoctor(User currentDoctor, Long patientId);
 
-    /** No ownership check - the caller must already have authorized access to this patient. */
     byte[] exportCardById(Long patientId);
 }

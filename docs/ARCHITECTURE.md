@@ -17,16 +17,17 @@ exactly where it should.
 |-------------------|--------------------------------------------------|
 | Language / runtime | Java 17, Spring Boot 3.2.4                       |
 | Web                | Spring MVC (REST), springdoc-openapi (Swagger)   |
-| Security           | Spring Security, JWT (jjwt), method-level `@PreAuthorize`, per-IP rate limiting on auth |
+| Security           | Spring Security, JWT (jjwt, 15-min access token) + DB-backed rotating refresh token, method-level `@PreAuthorize`, per-IP rate limiting on auth |
 | Persistence        | Spring Data JPA / Hibernate, MySQL 8, indexed hot-path queries |
 | Migrations         | Liquibase (YAML changesets)                      |
 | Mapping            | MapStruct                                        |
-| Cross-cutting      | Spring AOP (`AuditAspect`), `@Scheduled` (reminders) |
+| Cross-cutting      | Spring AOP (`AuditAspect`), `@Scheduled` (reminders), `RequestLoggingFilter` (correlation ID via MDC) |
 | Documents          | S3-compatible object storage (MinIO, AWS SDK v2) + `multipart/form-data` |
 | PDF export         | Thymeleaf (HTML template) + openhtmltopdf         |
-| Observability      | Spring Boot Actuator (`/actuator/health`, `/metrics`) |
+| Observability      | Spring Boot Actuator (`/actuator/health`), Micrometer + `/actuator/prometheus`, structured request logs with a correlation ID |
 | Tests              | JUnit 5, Mockito, Testcontainers (MySQL + MinIO), MockMvc |
 | Packaging          | Docker, Docker Compose, container healthchecks    |
+| CI                 | GitHub Actions — build, Checkstyle, unit + Testcontainers tests on every push |
 
 ---
 
@@ -75,7 +76,7 @@ who triggered it is deleted.
 
 | Controller                     | Base path                          | Notes |
 |---------------------------------|--------------------------------------|-------|
-| `AuthenticationController`      | `/api/auth`                          | public |
+| `AuthenticationController`      | `/api/auth`                          | public; `/login` issues an access + refresh token, `/refresh` rotates it, `/logout` revokes it |
 | `PatientProfileController`      | `/api/patients`                      | `/me` = patient, `/{id}` = doctor/admin |
 | `CareLinkController`            | `/api/care-links`                    | includes `/my-patients` search+paging |
 | `AllergyController`             | `/api/patients/me\|{id}/allergies`   | |

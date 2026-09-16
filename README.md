@@ -1,5 +1,6 @@
 # 🩺 Medical Card (Pulse) - Spring Boot Back-End
 
+![CI](https://github.com/VitaliyProgrammer/medical-card-application/actions/workflows/ci.yml/badge.svg)
 ![Java](https://img.shields.io/badge/Java-17-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.4-32CD32)
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-JWT-FF69B4)
@@ -124,8 +125,10 @@ testing.
   validator
 
 🔐 **Security**
-- JWT authentication, ownership checks on every patient record, per-IP rate
-  limiting, indexed hot-path queries
+- Short-lived JWT access tokens (15 min) with a separate, DB-backed,
+  single-use refresh token (rotated on every use, revocable on logout)
+- Ownership checks on every patient record, per-IP rate limiting, indexed
+  hot-path queries
 
 🧪 **Testing**
 - Mockito-based unit tests for every service
@@ -169,9 +172,10 @@ it maintainable:
 | MapStruct                       | 1.5.5.Final      | DTO ↔ entity mapping                                              |
 | AWS SDK v2 (S3)                 | 2.25.60          | S3-compatible object storage client (MinIO in dev/compose)        |
 | openhtmltopdf                   | 1.0.10           | HTML (Thymeleaf) → PDF rendering for card export                  |
-| Spring Boot Actuator            | Boot-managed     | Health checks, metrics                                            |
+| Spring Boot Actuator + Micrometer/Prometheus | Boot-managed | Health checks, `/actuator/prometheus` metrics |
 | JUnit 5 / Mockito / Testcontainers | 5.10.2 / Boot-managed / Boot-managed | Unit and integration testing         |
 | Docker / Docker Compose         | -                | Containerization of app, MySQL, and MinIO                         |
+| GitHub Actions                  | -                | CI: build, Checkstyle, unit + Testcontainers tests on every push  |
 | Swagger (springdoc-openapi)     | 2.5.0            | API documentation & testing                                        |
 
 ## Design Patterns && Architecture Concepts
@@ -186,6 +190,8 @@ it maintainable:
 | DTO + MapStruct                   | Clean API contracts, decoupled from JPA entities            |
 | Centralized Exception Handling    | Predictable, consistent error responses                     |
 | Rate Limiting Filter              | Simple in-memory sliding-window guard on auth endpoints      |
+| Refresh-Token Rotation            | Short-lived JWT + DB-backed, single-use, revocable refresh token |
+| Request Correlation Filter        | Per-request ID (MDC) threaded through all log lines for traceability |
 
 <div align="center">
 
@@ -297,11 +303,18 @@ curl -X POST http://localhost:8080/api/auth/registration \
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "patient@example.com", "password": "password123"}'
-# → { "token": "..." }
+# → { "token": "...", "refreshToken": "..." }
 
 # Read your own card
 curl http://localhost:8080/api/patients/me \
   -H "Authorization: Bearer <token>"
+
+# When the access token expires (after 15 min), exchange the refresh token
+# for a new pair instead of logging in again — the old refresh token is
+# revoked in the same call, so it can't be reused
+curl -X POST http://localhost:8080/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "<refreshToken>"}'
 ```
 
 Register a second account with `"role": "DOCTOR"` to try the doctor-side
@@ -333,6 +346,7 @@ All endpoints are documented in Swagger UI:
 [Open Swagger UI](http://localhost:8080/swagger-ui.html)
 
 Health check: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+Metrics (ADMIN only): [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
 MinIO console: [http://localhost:9001](http://localhost:9001)
 
 ## 📌 Final Notes

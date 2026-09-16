@@ -2,6 +2,7 @@ package com.vitaliy.medcard.configuration;
 
 import com.vitaliy.medcard.ratelimit.RateLimitingFilter;
 import com.vitaliy.medcard.security.jwt.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
@@ -39,6 +40,14 @@ public class SecurityAccessConfiguration {
                         .requestMatchers(EndpointRequest.to("health")).permitAll()
                         .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ADMIN")
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Full authentication is required to access this resource!"))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                                        "You don't have permission to perform this action!"))
                 )
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)

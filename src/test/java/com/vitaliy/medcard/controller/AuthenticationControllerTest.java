@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vitaliy.medcard.IntegrationTestBase;
+import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
@@ -137,5 +138,72 @@ class AuthenticationControllerTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/refresh: issues a new pair and rotates the old refresh token")
+    void refresh_success() throws Exception {
+        UserLoginResponseDto loginResponse = loginAsExistingUser();
+
+        MvcResult refreshResult = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RefreshTokenRequestDto(loginResponse.refreshToken()))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UserLoginResponseDto refreshResponse = objectMapper.readValue(
+                refreshResult.getResponse().getContentAsString(), UserLoginResponseDto.class);
+
+        assertThat(refreshResponse.token()).isNotBlank();
+        assertThat(refreshResponse.refreshToken()).isNotEqualTo(loginResponse.refreshToken());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/refresh: rejects a refresh token that was already used once")
+    void refresh_reusedToken_isRejected() throws Exception {
+        UserLoginResponseDto loginResponse = loginAsExistingUser();
+        RefreshTokenRequestDto refreshRequest =
+                new RefreshTokenRequestDto(loginResponse.refreshToken());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/logout: revokes the refresh token so it can no longer be used")
+    void logout_revokesToken() throws Exception {
+        UserLoginResponseDto loginResponse = loginAsExistingUser();
+        RefreshTokenRequestDto request = new RefreshTokenRequestDto(loginResponse.refreshToken());
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private UserLoginResponseDto loginAsExistingUser() throws Exception {
+        UserLoginRequestDto loginRequest = new UserLoginRequestDto("patient@test.com", "password123");
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper.readValue(
+                loginResult.getResponse().getContentAsString(), UserLoginResponseDto.class);
     }
 }
