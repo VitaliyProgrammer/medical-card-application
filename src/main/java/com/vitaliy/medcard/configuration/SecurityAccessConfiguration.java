@@ -42,11 +42,6 @@ public class SecurityAccessConfiguration {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
-                        // Without this, Spring Security's default entry point
-                        // returns 403 for a missing/invalid token too, since it
-                        // has no "challenge" to issue - callers can't tell
-                        // "not logged in" (401) apart from "logged in, but not
-                        // allowed" (403).
                         .authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
                                         "Full authentication is required to access this resource!"))

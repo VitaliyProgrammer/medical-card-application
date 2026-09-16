@@ -113,8 +113,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new InvalidRefreshTokenException("Refresh token is expired or revoked!");
         }
 
-        // Rotation: burn the old refresh token so a stolen copy can't be replayed
-        // after the legitimate client has already used it once.
         storedToken.setRevoked(true);
 
         return issueTokenPair(storedToken.getUser());

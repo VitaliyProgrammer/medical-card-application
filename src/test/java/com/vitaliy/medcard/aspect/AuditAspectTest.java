@@ -43,10 +43,6 @@ class AuditAspectTest extends IntegrationTestBase {
         authenticationService.register(request);
 
         List<AuditEntry> entries = auditEntryRepository.findAll();
-        // REQUIRES_NEW commits audit entries independently of this test's own
-        // rollback, and the shared test database now persists across classes,
-        // so earlier tests' REGISTER_USER entries can still be here - take the
-        // most recent one (highest id), which is always this call's own entry.
         AuditEntry entry = entries.stream()
                 .filter(e -> "REGISTER_USER".equals(e.getAction()))
                 .max(Comparator.comparing(AuditEntry::getId))

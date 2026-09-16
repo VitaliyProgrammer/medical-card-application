@@ -8,13 +8,6 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 public abstract class IntegrationTestBase {
 
-    // Deliberately NOT annotated with @Container: that annotation ties a
-    // container's start/stop lifecycle to a single test class. Since every
-    // subclass here shares this same static field, @Container would restart
-    // MySQL fresh for each test class - and Spring's cached ApplicationContext
-    // from an earlier class would keep pointing at the now-dead old port.
-    // Starting both containers once, manually, makes them true JVM-wide
-    // singletons; Testcontainers' Ryuk reaper still cleans them up on exit.
     static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>("mysql:8.0")
             .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M");
 
