@@ -5,17 +5,19 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 public abstract class IntegrationTestBase {
 
-    @Container
+    // Deliberately NOT annotated with @Container: that annotation ties a
+    // container's start/stop lifecycle to a single test class. Since every
+    // subclass here shares this same static field, @Container would restart
+    // MySQL fresh for each test class - and Spring's cached ApplicationContext
+    // from an earlier class would keep pointing at the now-dead old port.
+    // Starting both containers once, manually, makes them true JVM-wide
+    // singletons; Testcontainers' Ryuk reaper still cleans them up on exit.
     static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>("mysql:8.0")
             .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M");
 
-    @Container
     static final GenericContainer<?> MINIO_CONTAINER =
             new GenericContainer<>("quay.io/minio/minio:latest")
                     .withExposedPorts(9000)
@@ -23,6 +25,11 @@ public abstract class IntegrationTestBase {
                     .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
                     .withCommand("server", "/data")
                     .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000));
+
+    static {
+        MYSQL_CONTAINER.start();
+        MINIO_CONTAINER.start();
+    }
 
     @DynamicPropertySource
     static void configureDatasource(DynamicPropertyRegistry registry) {
