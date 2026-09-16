@@ -13,7 +13,7 @@ public abstract class IntegrationTestBase {
 
     @Container
     static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>("mysql:8.0")
-            .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=16M");
+            .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M");
 
     @Container
     static final GenericContainer<?> MINIO_CONTAINER =
