@@ -19,17 +19,17 @@
     <!-- PatientProfile -> CareLink -->
     <polyline points="460,150 460,180 300,180 300,195" marker-end="url(#arrow)"/>
 
-    <!-- PatientProfile -> bus (routed below CareLink so nothing passes behind it) -->
-    <line x1="550" y1="150" x2="550" y2="293"/>
+    <!-- PatientProfile -> bus (routed below CareLink, with real clearance beneath it) -->
+    <line x1="550" y1="150" x2="550" y2="330"/>
     <!-- horizontal bus -->
-    <line x1="120" y1="293" x2="1000" y2="293"/>
-    <!-- bus -> six children (longer drops now that the children row moved down) -->
-    <line x1="120" y1="293" x2="120" y2="370" marker-end="url(#arrow)"/>
-    <line x1="296" y1="293" x2="296" y2="370" marker-end="url(#arrow)"/>
-    <line x1="472" y1="293" x2="472" y2="370" marker-end="url(#arrow)"/>
-    <line x1="648" y1="293" x2="648" y2="370" marker-end="url(#arrow)"/>
-    <line x1="824" y1="293" x2="824" y2="370" marker-end="url(#arrow)"/>
-    <line x1="1000" y1="293" x2="1000" y2="370" marker-end="url(#arrow)"/>
+    <line x1="120" y1="330" x2="1000" y2="330"/>
+    <!-- bus -> six children -->
+    <line x1="120" y1="330" x2="120" y2="370" marker-end="url(#arrow)"/>
+    <line x1="296" y1="330" x2="296" y2="370" marker-end="url(#arrow)"/>
+    <line x1="472" y1="330" x2="472" y2="370" marker-end="url(#arrow)"/>
+    <line x1="648" y1="330" x2="648" y2="370" marker-end="url(#arrow)"/>
+    <line x1="824" y1="330" x2="824" y2="370" marker-end="url(#arrow)"/>
+    <line x1="1000" y1="330" x2="1000" y2="370" marker-end="url(#arrow)"/>
   </g>
 
   <!-- ===== cardinality labels ===== -->
