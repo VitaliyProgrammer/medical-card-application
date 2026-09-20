@@ -38,7 +38,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+            DateTimeFormatter.ofPattern("dd-MM-yyyy, HH:mm");
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(

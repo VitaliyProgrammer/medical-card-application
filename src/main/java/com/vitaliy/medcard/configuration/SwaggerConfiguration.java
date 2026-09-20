@@ -3,8 +3,12 @@ package com.vitaliy.medcard.configuration;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,6 +16,14 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfiguration {
 
     private static final String BEARER_SCHEME_NAME = "bearerAuth";
+
+    static {
+        SpringDocUtils.getConfig().replaceWithSchema(LocalDate.class,
+                new StringSchema().example("20-09-2026").description("Format: dd-MM-yyyy"));
+        SpringDocUtils.getConfig().replaceWithSchema(LocalDateTime.class,
+                new StringSchema().example("20-09-2026, 15:23")
+                        .description("Format: dd-MM-yyyy, HH:mm"));
+    }
 
     @Bean
     public OpenAPI medCardOpenApi() {
