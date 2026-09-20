@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,6 +40,9 @@ public class Allergy {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false)
     private AllergySeverity severity;
+
+    @Column(name = "diagnosed_at")
+    private LocalDate diagnosedAt;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

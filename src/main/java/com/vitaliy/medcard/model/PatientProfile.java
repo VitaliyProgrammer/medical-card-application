@@ -34,6 +34,9 @@ public class PatientProfile {
     @Column(name = "blood_group")
     private String bloodGroup;
 
+    @Column(name = "address")
+    private String address;
+
     @Column(name = "emergency_contact_name")
     private String emergencyContactName;
 

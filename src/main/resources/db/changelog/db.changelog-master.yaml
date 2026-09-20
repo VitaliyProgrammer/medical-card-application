@@ -23,3 +23,7 @@ databaseChangeLog:
       file: db/changelog/changes/create_performance_indexes.yaml
   - include:
       file: db/changelog/changes/create_refresh_tokens_table.yaml
+  - include:
+      file: db/changelog/changes/add_diagnosed_at_to_allergies.yaml
+  - include:
+      file: db/changelog/changes/add_address_to_patient_profiles.yaml

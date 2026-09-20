@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-diagnosed-at-to-allergies
+      author: vitaliy
+      changes:
+        - addColumn:
+            tableName: allergies
+            columns:
+              - column:
+                  name: diagnosed_at
+                  type: DATE
