@@ -10,9 +10,12 @@ import com.vitaliy.medcard.service.PdfExportService;
 import com.vitaliy.medcard.util.AgeCalculator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -22,6 +25,7 @@ import org.thymeleaf.context.Context;
 public class PdfExportServiceImpl implements PdfExportService {
 
     private static final String TEMPLATE_NAME = "patient-card";
+    private static final String LOGO_BASE64 = loadLogoAsBase64();
 
     private final TemplateEngine templateEngine;
 
@@ -38,6 +42,8 @@ public class PdfExportServiceImpl implements PdfExportService {
             List<Condition> conditions, List<Visit> visits) {
         Context context = new Context();
         context.setVariable("patientFullName", patient.getUser().getFullName());
+        context.setVariable("patientId", patient.getId());
+        context.setVariable("address", patient.getAddress());
         context.setVariable("dateOfBirth", patient.getDateOfBirth());
         context.setVariable("age", AgeCalculator.calculateAge(patient.getDateOfBirth()));
         context.setVariable("bloodGroup", patient.getBloodGroup());
@@ -47,6 +53,7 @@ public class PdfExportServiceImpl implements PdfExportService {
         context.setVariable("conditions", conditions);
         context.setVariable("visits", visits);
         context.setVariable("generatedAt", LocalDateTime.now());
+        context.setVariable("logoBase64", LOGO_BASE64);
 
         return templateEngine.process(TEMPLATE_NAME, context);
     }
@@ -62,6 +69,15 @@ public class PdfExportServiceImpl implements PdfExportService {
             return outputStream.toByteArray();
         } catch (IOException e) {
             throw new PdfGenerationException("Failed to generate the patient card PDF!");
+        }
+    }
+
+    private static String loadLogoAsBase64() {
+        ClassPathResource logo = new ClassPathResource("images/patient-card-logo.png");
+        try (var logoStream = logo.getInputStream()) {
+            return Base64.getEncoder().encodeToString(logoStream.readAllBytes());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to load the patient card logo!", e);
         }
     }
 }
