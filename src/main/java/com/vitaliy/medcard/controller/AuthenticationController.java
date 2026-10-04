@@ -1,7 +1,9 @@
 package com.vitaliy.medcard.controller;
 
+import com.vitaliy.medcard.dto.ForgotPasswordRequestDto;
 import com.vitaliy.medcard.dto.PasswordSuggestionResponseDto;
 import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
+import com.vitaliy.medcard.dto.ResetPasswordRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
@@ -62,5 +64,19 @@ public class AuthenticationController {
     @Operation(summary = "Revoke a refresh token")
     public void logout(@RequestBody @Valid RefreshTokenRequestDto request) {
         authenticationService.logout(request);
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Request a password reset email for the given address")
+    public void forgotPassword(@RequestBody @Valid ForgotPasswordRequestDto request) {
+        authenticationService.forgotPassword(request);
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Set a new password using a token from the reset email")
+    public void resetPassword(@RequestBody @Valid ResetPasswordRequestDto request) {
+        authenticationService.resetPassword(request);
     }
 }

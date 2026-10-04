@@ -1,6 +1,8 @@
 package com.vitaliy.medcard.service;
 
+import com.vitaliy.medcard.dto.ForgotPasswordRequestDto;
 import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
+import com.vitaliy.medcard.dto.ResetPasswordRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
@@ -15,4 +17,8 @@ public interface AuthenticationService {
     UserLoginResponseDto refresh(RefreshTokenRequestDto request);
 
     void logout(RefreshTokenRequestDto request);
+
+    void forgotPassword(ForgotPasswordRequestDto request);
+
+    void resetPassword(ResetPasswordRequestDto request);
 }

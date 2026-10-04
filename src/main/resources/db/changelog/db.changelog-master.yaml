@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/changes/add_diagnosed_at_to_allergies.yaml
   - include:
       file: db/changelog/changes/add_address_to_patient_profiles.yaml
+  - include:
+      file: db/changelog/changes/create_password_reset_tokens_table.yaml
