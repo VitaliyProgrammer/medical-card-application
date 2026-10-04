@@ -23,6 +23,7 @@ public class AuditAspect {
     private static final String METRIC_NAME = "audit_entries_total";
 
     private final AuditEntryWriter auditEntryWriter;
+
     private final MeterRegistry meterRegistry;
 
     @Around("@annotation(audited)")
