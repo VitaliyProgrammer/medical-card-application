@@ -7,23 +7,29 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.vitaliy.medcard.dto.ForgotPasswordRequestDto;
 import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
+import com.vitaliy.medcard.dto.ResetPasswordRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
 import com.vitaliy.medcard.dto.UserRegistrationResponseDto;
 import com.vitaliy.medcard.exception.InvalidCredentialsException;
+import com.vitaliy.medcard.exception.InvalidPasswordResetTokenException;
 import com.vitaliy.medcard.exception.InvalidRefreshTokenException;
 import com.vitaliy.medcard.exception.RegistrationException;
 import com.vitaliy.medcard.mapper.UserMapper;
+import com.vitaliy.medcard.model.PasswordResetToken;
 import com.vitaliy.medcard.model.RefreshToken;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.repository.PasswordResetTokenRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.RefreshTokenRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.security.JwtUtil;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,12 +37,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceImplTest {
 
     private static final long REFRESH_TOKEN_EXPIRATION_MS = 2_592_000_000L;
+    private static final long PASSWORD_RESET_EXPIRATION_MS = 900_000L;
+    private static final String MAIL_FROM = "no-reply@medicalcard.local";
 
     @Mock
     private UserRepository userRepository;
@@ -48,6 +58,9 @@ class AuthenticationServiceImplTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Mock
     private UserMapper userMapper;
 
     @Mock
@@ -55,6 +68,9 @@ class AuthenticationServiceImplTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private JavaMailSender mailSender;
 
     private AuthenticationServiceImpl authenticationService;
 
@@ -64,7 +80,8 @@ class AuthenticationServiceImplTest {
     void setUp() {
         authenticationService = new AuthenticationServiceImpl(
                 userRepository, patientProfileRepository, refreshTokenRepository,
-                userMapper, passwordEncoder, jwtUtil, REFRESH_TOKEN_EXPIRATION_MS);
+                passwordResetTokenRepository, userMapper, passwordEncoder, jwtUtil, mailSender,
+                REFRESH_TOKEN_EXPIRATION_MS, PASSWORD_RESET_EXPIRATION_MS, MAIL_FROM);
 
         patientRequest = new UserRegistrationRequestDto();
         patientRequest.setEmail("patient@test.com");
@@ -266,5 +283,100 @@ class AuthenticationServiceImplTest {
         authenticationService.logout(new RefreshTokenRequestDto("nonexistent"));
 
         verify(refreshTokenRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("forgotPassword: emails a reset token when the address is known")
+    void forgotPassword_knownEmail_sendsEmail() {
+        User user = new User();
+        user.setEmail("patient@test.com");
+
+        when(userRepository.findByEmail("patient@test.com")).thenReturn(Optional.of(user));
+
+        authenticationService.forgotPassword(new ForgotPasswordRequestDto("patient@test.com"));
+
+        verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
+        verify(mailSender).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    @DisplayName("forgotPassword: silently does nothing for an unknown address")
+    void forgotPassword_unknownEmail_isNoOp() {
+        when(userRepository.findByEmail("nobody@test.com")).thenReturn(Optional.empty());
+
+        authenticationService.forgotPassword(new ForgotPasswordRequestDto("nobody@test.com"));
+
+        verify(passwordResetTokenRepository, never()).save(any());
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    @DisplayName("resetPassword: updates the password and revokes existing sessions")
+    void resetPassword_success_updatesPasswordAndRevokesSessions() {
+        User user = new User();
+        user.setEmail("patient@test.com");
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken("valid-reset-token");
+        resetToken.setUser(user);
+        resetToken.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        resetToken.setUsed(false);
+
+        RefreshToken activeSession = new RefreshToken();
+        activeSession.setRevoked(false);
+
+        when(passwordResetTokenRepository.findByToken("valid-reset-token"))
+                .thenReturn(Optional.of(resetToken));
+        when(passwordEncoder.encode("NewPass123!")).thenReturn("hashed-new-pass");
+        when(refreshTokenRepository.findAllByUserAndRevokedFalse(user))
+                .thenReturn(List.of(activeSession));
+
+        authenticationService.resetPassword(
+                new ResetPasswordRequestDto("valid-reset-token", "NewPass123!", "NewPass123!"));
+
+        assertThat(user.getPassword()).isEqualTo("hashed-new-pass");
+        assertThat(resetToken.isUsed()).isTrue();
+        assertThat(activeSession.isRevoked()).isTrue();
+    }
+
+    @Test
+    @DisplayName("resetPassword: rejects an unknown token")
+    void resetPassword_unknownToken_isRejected() {
+        when(passwordResetTokenRepository.findByToken("nonexistent")).thenReturn(Optional.empty());
+
+        assertThrows(InvalidPasswordResetTokenException.class, () -> authenticationService
+                .resetPassword(new ResetPasswordRequestDto("nonexistent", "NewPass123!", "NewPass123!")));
+    }
+
+    @Test
+    @DisplayName("resetPassword: rejects an expired token")
+    void resetPassword_expiredToken_isRejected() {
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken("expired-token");
+        resetToken.setUser(new User());
+        resetToken.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        resetToken.setUsed(false);
+
+        when(passwordResetTokenRepository.findByToken("expired-token"))
+                .thenReturn(Optional.of(resetToken));
+
+        assertThrows(InvalidPasswordResetTokenException.class, () -> authenticationService
+                .resetPassword(new ResetPasswordRequestDto("expired-token", "NewPass123!", "NewPass123!")));
+    }
+
+    @Test
+    @DisplayName("resetPassword: rejects an already-used token")
+    void resetPassword_usedToken_isRejected() {
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken("used-token");
+        resetToken.setUser(new User());
+        resetToken.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        resetToken.setUsed(true);
+
+        when(passwordResetTokenRepository.findByToken("used-token"))
+                .thenReturn(Optional.of(resetToken));
+
+        assertThrows(InvalidPasswordResetTokenException.class, () -> authenticationService
+                .resetPassword(new ResetPasswordRequestDto("used-token", "NewPass123!", "NewPass123!")));
     }
 }

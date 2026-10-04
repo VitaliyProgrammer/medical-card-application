@@ -7,6 +7,7 @@ import com.vitaliy.medcard.exception.DocumentNotFoundException;
 import com.vitaliy.medcard.exception.FileStorageException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
 import com.vitaliy.medcard.exception.InvalidCredentialsException;
+import com.vitaliy.medcard.exception.InvalidPasswordResetTokenException;
 import com.vitaliy.medcard.exception.InvalidRefreshTokenException;
 import com.vitaliy.medcard.exception.JwtAuthenticationException;
 import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
@@ -38,7 +39,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+            DateTimeFormatter.ofPattern("dd-MM-yyyy, HH:mm");
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
@@ -141,6 +142,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidRefreshTokenException.class)
     public ResponseEntity<Object> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+    public ResponseEntity<Object> handleInvalidPasswordResetToken(
+            InvalidPasswordResetTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
     }
 

@@ -12,6 +12,8 @@ public class PatientProfileRequestDto {
 
     private String bloodGroup;
 
+    private String address;
+
     private String emergencyContactName;
 
     private String emergencyContactPhone;

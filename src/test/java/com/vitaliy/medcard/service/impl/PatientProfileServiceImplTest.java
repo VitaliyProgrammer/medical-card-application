@@ -58,7 +58,7 @@ class PatientProfileServiceImplTest {
         profile.setUser(patientUser);
 
         responseDto = new PatientProfileResponseDto(
-                10L, "Jane Patient", "patient@test.com", null, null, null, null, null);
+                10L, "Jane Patient", "patient@test.com", null, null, null, null, null, null);
     }
 
     @Test

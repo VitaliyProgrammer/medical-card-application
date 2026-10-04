@@ -73,9 +73,10 @@ class AllergyServiceImplTest {
     @Test
     @DisplayName("addAllergy: attaches the new allergy to the caller's own card")
     void addAllergy_success() {
-        AllergyRequestDto request = new AllergyRequestDto("Penicillin", AllergySeverity.SEVERE);
+        AllergyRequestDto request =
+                new AllergyRequestDto("Penicillin", AllergySeverity.SEVERE, null);
         AllergyResponseDto responseDto =
-                new AllergyResponseDto(100L, "Penicillin", AllergySeverity.SEVERE, null);
+                new AllergyResponseDto(100L, "Penicillin", AllergySeverity.SEVERE, null, null);
 
         when(patientProfileRepository.findByUserId(patientUser.getId()))
                 .thenReturn(Optional.of(patient));
@@ -129,7 +130,7 @@ class AllergyServiceImplTest {
         doctor.setId(5L);
 
         AllergyResponseDto responseDto =
-                new AllergyResponseDto(100L, "Penicillin", AllergySeverity.SEVERE, null);
+                new AllergyResponseDto(100L, "Penicillin", AllergySeverity.SEVERE, null, null);
 
         doNothing().when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
         when(allergyRepository.findByPatientId(patient.getId())).thenReturn(List.of(allergy));

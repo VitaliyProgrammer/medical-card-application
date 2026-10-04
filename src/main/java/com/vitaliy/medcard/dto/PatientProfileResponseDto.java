@@ -9,6 +9,7 @@ public record PatientProfileResponseDto(
         LocalDate dateOfBirth,
         Integer age,
         String bloodGroup,
+        String address,
         String emergencyContactName,
         String emergencyContactPhone
 ) {

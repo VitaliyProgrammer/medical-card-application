@@ -1,19 +1,24 @@
 package com.vitaliy.medcard.service.impl;
 
 import com.vitaliy.medcard.aspect.Audited;
+import com.vitaliy.medcard.dto.ForgotPasswordRequestDto;
 import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
+import com.vitaliy.medcard.dto.ResetPasswordRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
 import com.vitaliy.medcard.dto.UserRegistrationResponseDto;
 import com.vitaliy.medcard.exception.InvalidCredentialsException;
+import com.vitaliy.medcard.exception.InvalidPasswordResetTokenException;
 import com.vitaliy.medcard.exception.InvalidRefreshTokenException;
 import com.vitaliy.medcard.exception.RegistrationException;
 import com.vitaliy.medcard.mapper.UserMapper;
+import com.vitaliy.medcard.model.PasswordResetToken;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.RefreshToken;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.repository.PasswordResetTokenRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.RefreshTokenRepository;
 import com.vitaliy.medcard.repository.UserRepository;
@@ -23,6 +28,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,26 +40,38 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserRepository userRepository;
     private final PatientProfileRepository patientProfileRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final JavaMailSender mailSender;
     private final long refreshTokenExpirationMs;
+    private final long passwordResetExpirationMs;
+    private final String mailFrom;
 
     public AuthenticationServiceImpl(
             UserRepository userRepository,
             PatientProfileRepository patientProfileRepository,
             RefreshTokenRepository refreshTokenRepository,
+            PasswordResetTokenRepository passwordResetTokenRepository,
             UserMapper userMapper,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            @Value("${jwt.refresh-expiration}") long refreshTokenExpirationMs) {
+            JavaMailSender mailSender,
+            @Value("${jwt.refresh-expiration}") long refreshTokenExpirationMs,
+            @Value("${app.password-reset.expiration}") long passwordResetExpirationMs,
+            @Value("${app.mail.from}") String mailFrom) {
         this.userRepository = userRepository;
         this.patientProfileRepository = patientProfileRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.mailSender = mailSender;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
+        this.passwordResetExpirationMs = passwordResetExpirationMs;
+        this.mailFrom = mailFrom;
     }
 
     @Override
@@ -123,6 +142,53 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public void logout(RefreshTokenRequestDto request) {
         refreshTokenRepository.findByToken(request.refreshToken())
                 .ifPresent(token -> token.setRevoked(true));
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequestDto request) {
+        userRepository.findByEmail(request.email()).ifPresent(this::issuePasswordResetToken);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequestDto request) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+                .orElseThrow(() ->
+                        new InvalidPasswordResetTokenException("Password reset token is invalid!"));
+
+        if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new InvalidPasswordResetTokenException(
+                    "Password reset token is expired or already used!");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        resetToken.setUsed(true);
+
+        refreshTokenRepository.findAllByUserAndRevokedFalse(user)
+                .forEach(token -> token.setRevoked(true));
+    }
+
+    private void issuePasswordResetToken(User user) {
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(UUID.randomUUID().toString());
+        resetToken.setUser(user);
+        resetToken.setExpiresAt(
+                LocalDateTime.now().plus(Duration.ofMillis(passwordResetExpirationMs)));
+        resetToken.setUsed(false);
+        resetToken.setCreatedAt(LocalDateTime.now());
+        passwordResetTokenRepository.save(resetToken);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailFrom);
+        message.setTo(user.getEmail());
+        message.setSubject("Reset your Medical Card password");
+        message.setText("Use this code to reset your password: " + resetToken.getToken()
+                + "\n\nThis code expires in "
+                + Duration.ofMillis(passwordResetExpirationMs).toMinutes()
+                + " minutes. If you didn't request this, ignore this email.");
+        mailSender.send(message);
     }
 
     private UserLoginResponseDto issueTokenPair(User user) {

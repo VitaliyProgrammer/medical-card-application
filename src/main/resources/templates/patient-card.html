@@ -4,60 +4,93 @@
     <meta charset="UTF-8"/>
     <title>Medical Card</title>
     <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #222222; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        h2 { font-size: 14px; margin-top: 20px; border-bottom: 1px solid #cccccc; padding-bottom: 4px; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; color: #222222; }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        h2 { font-size: 17px; margin-top: 20px; border-bottom: 1px solid #cccccc; padding-bottom: 4px; }
         table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-        th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #eeeeee; font-size: 11px; }
+        th, td { text-align: left; padding: 5px 7px; font-size: 13px; }
+        th { font-size: 15px; border-bottom: none; }
+        td { border-bottom: 1px solid #eeeeee; }
         .label { color: #666666; }
-        .footer { margin-top: 30px; font-size: 10px; color: #999999; }
+        .footer { margin-top: 30px; font-size: 12px; color: #707070; }
+        .header { overflow: hidden; }
+        .logo { float: right; width: 140px; height: 140px; border-radius: 50%; overflow: hidden; }
+        .logo img { width: 140px; height: 140px; }
+        .empty-row td { border-bottom: none; text-align: center; }
+        .clinical-table th:nth-child(1), .clinical-table td:nth-child(1) { width: 35%; }
+        .clinical-table th:nth-child(2), .clinical-table td:nth-child(2) { width: 25%; }
+        .clinical-table th:nth-child(3), .clinical-table td:nth-child(3) { width: 40%; }
+        .clinical-table td:nth-child(2) { text-align: center; }
+        .clinical-table th { text-align: center; }
+        .clinical-table th:nth-child(1), .clinical-table td:nth-child(1) { text-align: left; padding-left: 0; }
+        .clinical-table tr:nth-child(even) { background-color: #f7f6f2; }
+        td.diagnosed { text-align: center; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+        .badge.sev-mild, .badge.status-resolved { background-color: #e3f3e9; color: #3a7d44; }
+        .badge.sev-moderate { background-color: #fbf0dd; color: #a66a1e; }
+        .badge.sev-severe { background-color: #fbe9e8; color: #a83a3a; }
+        .badge.status-active { background-color: #e1ecfa; color: #4a6b8a; }
     </style>
 </head>
 <body>
-    <h1 th:text="${patientFullName}">Patient Name</h1>
-    <p>
-        <span class="label">Date of birth:</span> <span th:text="${dateOfBirth}">-</span>
-        (<span th:text="${age}">-</span> years) |
-        <span class="label">Blood group:</span> <span th:text="${bloodGroup}">-</span>
-    </p>
-    <p>
-        <span class="label">Emergency contact:</span>
-        <span th:text="${emergencyContactName}">-</span>
-        <span th:text="${emergencyContactPhone}">-</span>
-    </p>
+    <div class="header">
+        <div class="logo">
+            <img th:src="'data:image/png;base64,' + ${logoBase64}" alt="Taborovets Medical Card"/>
+        </div>
+        <h1 th:text="${patientFullName}">Patient Name</h1>
+        <p>
+            <span class="label">Address:</span> <span th:text="${address != null and !address.isEmpty() ? address : '-'}">-</span>
+        </p>
+        <p>
+            <span class="label">Date of birth:</span> <span th:text="${dateOfBirth != null ? #temporals.format(dateOfBirth, 'dd-MM-yyyy') : '-'}">-</span>
+            (<span th:text="${age}">-</span> years) |
+            <span class="label">Blood group:</span> <span th:text="${bloodGroup}">-</span>
+        </p>
+        <p>
+            <span class="label">Emergency contact:</span>
+            <span th:text="${emergencyContactName}">-</span>
+            <span th:text="${emergencyContactPhone}">-</span>
+        </p>
+        <p>
+            <span class="label">Patient ID:</span> <span th:text="${patientId}">-</span>
+        </p>
+    </div>
 
     <h2>Allergies</h2>
-    <table>
-        <tr><th>Name</th><th>Severity</th></tr>
+    <table class="clinical-table">
+        <tr><th>Name</th><th>Severity</th><th>Diagnosed</th></tr>
         <tr th:each="allergy : ${allergies}">
             <td th:text="${allergy.name}">-</td>
-            <td th:text="${allergy.severity}">-</td>
+            <td><span th:text="${allergy.severity}"
+                th:class="'badge ' + (${allergy.severity.name() eq 'SEVERE'} ? 'sev-severe' : (${allergy.severity.name() eq 'MODERATE'} ? 'sev-moderate' : 'sev-mild'))">-</span></td>
+            <td class="diagnosed" th:text="${allergy.diagnosedAt != null ? #temporals.format(allergy.diagnosedAt, 'dd-MM-yyyy') : '-'}">-</td>
         </tr>
-        <tr th:if="${allergies.isEmpty()}"><td colspan="2">No known allergies</td></tr>
+        <tr th:if="${allergies.isEmpty()}" class="empty-row"><td colspan="3">No known allergies</td></tr>
     </table>
 
     <h2>Chronic conditions</h2>
-    <table>
+    <table class="clinical-table">
         <tr><th>Name</th><th>Status</th><th>Diagnosed</th></tr>
         <tr th:each="condition : ${conditions}">
             <td th:text="${condition.name}">-</td>
-            <td th:text="${condition.status}">-</td>
-            <td th:text="${condition.diagnosedAt}">-</td>
+            <td><span th:text="${condition.status}"
+                th:class="'badge ' + (${condition.status.name() eq 'RESOLVED'} ? 'status-resolved' : 'status-active')">-</span></td>
+            <td class="diagnosed" th:text="${condition.diagnosedAt != null ? #temporals.format(condition.diagnosedAt, 'dd-MM-yyyy') : '-'}">-</td>
         </tr>
-        <tr th:if="${conditions.isEmpty()}"><td colspan="3">No chronic conditions recorded</td></tr>
+        <tr th:if="${conditions.isEmpty()}" class="empty-row"><td colspan="3">No chronic conditions recorded</td></tr>
     </table>
 
     <h2>Visit history</h2>
-    <table>
+    <table class="clinical-table">
         <tr><th>Date</th><th>Doctor</th><th>Diagnosis</th></tr>
         <tr th:each="visit : ${visits}">
-            <td th:text="${visit.visitDate}">-</td>
+            <td th:text="${#temporals.format(visit.visitDate, 'dd-MM-yyyy, HH:mm')}">-</td>
             <td th:text="${visit.doctor.fullName}">-</td>
             <td th:text="${visit.diagnosis}">-</td>
         </tr>
-        <tr th:if="${visits.isEmpty()}"><td colspan="3">No visits recorded</td></tr>
+        <tr th:if="${visits.isEmpty()}" class="empty-row"><td colspan="3">No visits recorded</td></tr>
     </table>
 
-    <p class="footer" th:text="'Generated on ' + ${generatedAt}">Generated</p>
+    <p class="footer" th:text="'Generated on ' + ${#temporals.format(generatedAt, 'dd-MM-yyyy, HH:mm')}">Generated</p>
 </body>
 </html>

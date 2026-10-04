@@ -1,4 +1,4 @@
-# 🩺 Medical Card (Pulse) - Spring Boot Back-End
+# 🩺 Medical Card (Taborovets) - Spring Boot Back-End
 
 ![CI](https://github.com/VitaliyProgrammer/medical-card-application/actions/workflows/ci.yml/badge.svg)
 ![Java](https://img.shields.io/badge/Java-17-blue)
@@ -19,7 +19,7 @@
 
 ## 📌 Introduction
 
-**Medical Card** (brand name **Pulse**) is a personal health record (PHR)
+**Medical Card** (brand name **Taborovets**) is a personal health record (PHR)
 back-end developed as part of my Java back-end engineering learning journey.
 It replicates the core functionality of a real clinic system and demonstrates
 how a production-grade service handles:

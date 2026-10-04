@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-address-to-patient-profiles
+      author: vitaliy
+      changes:
+        - addColumn:
+            tableName: patient_profiles
+            columns:
+              - column:
+                  name: address
+                  type: VARCHAR(255)

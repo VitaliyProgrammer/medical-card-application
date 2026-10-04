@@ -1,16 +1,21 @@
 package com.vitaliy.medcard.controller;
 
+import com.vitaliy.medcard.dto.ForgotPasswordRequestDto;
+import com.vitaliy.medcard.dto.PasswordSuggestionResponseDto;
 import com.vitaliy.medcard.dto.RefreshTokenRequestDto;
+import com.vitaliy.medcard.dto.ResetPasswordRequestDto;
 import com.vitaliy.medcard.dto.UserLoginRequestDto;
 import com.vitaliy.medcard.dto.UserLoginResponseDto;
 import com.vitaliy.medcard.dto.UserRegistrationRequestDto;
 import com.vitaliy.medcard.dto.UserRegistrationResponseDto;
 import com.vitaliy.medcard.service.AuthenticationService;
+import com.vitaliy.medcard.util.PasswordGenerator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +29,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+
+    @GetMapping("/password-suggestion")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Generate a random password that satisfies the complexity requirements")
+    public PasswordSuggestionResponseDto generatePasswordSuggestion() {
+        return new PasswordSuggestionResponseDto(PasswordGenerator.generate());
+    }
 
     @PostMapping("/registration")
     @ResponseStatus(HttpStatus.CREATED)
@@ -52,5 +64,19 @@ public class AuthenticationController {
     @Operation(summary = "Revoke a refresh token")
     public void logout(@RequestBody @Valid RefreshTokenRequestDto request) {
         authenticationService.logout(request);
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Request a password reset email for the given address")
+    public void forgotPassword(@RequestBody @Valid ForgotPasswordRequestDto request) {
+        authenticationService.forgotPassword(request);
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Set a new password using a token from the reset email")
+    public void resetPassword(@RequestBody @Valid ResetPasswordRequestDto request) {
+        authenticationService.resetPassword(request);
     }
 }

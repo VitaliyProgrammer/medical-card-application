@@ -12,7 +12,7 @@ public abstract class IntegrationTestBase {
             .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M");
 
     static final GenericContainer<?> MINIO_CONTAINER =
-            new GenericContainer<>("quay.io/minio/minio:latest")
+            new GenericContainer<>("cgr.dev/chainguard/minio:latest-dev")
                     .withExposedPorts(9000)
                     .withEnv("MINIO_ROOT_USER", "minioadmin")
                     .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")

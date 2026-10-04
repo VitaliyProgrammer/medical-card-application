@@ -62,8 +62,8 @@ class AuthenticationControllerTest extends IntegrationTestBase {
     void registration_success() throws Exception {
         UserRegistrationRequestDto request = new UserRegistrationRequestDto();
         request.setEmail("new.doctor@test.com");
-        request.setPassword("password123");
-        request.setRepeatPassword("password123");
+        request.setPassword("Password123!");
+        request.setRepeatPassword("Password123!");
         request.setFullName("Dr. House");
         request.setRole(UserRole.DOCTOR);
 
@@ -85,8 +85,8 @@ class AuthenticationControllerTest extends IntegrationTestBase {
     void registration_duplicateEmail() throws Exception {
         UserRegistrationRequestDto request = new UserRegistrationRequestDto();
         request.setEmail(existingUser.getEmail());
-        request.setPassword("password123");
-        request.setRepeatPassword("password123");
+        request.setPassword("Password123!");
+        request.setRepeatPassword("Password123!");
         request.setFullName("Another Jane");
         request.setRole(UserRole.PATIENT);
 
@@ -101,8 +101,8 @@ class AuthenticationControllerTest extends IntegrationTestBase {
     void registration_passwordMismatch() throws Exception {
         UserRegistrationRequestDto request = new UserRegistrationRequestDto();
         request.setEmail("mismatch@test.com");
-        request.setPassword("password123");
-        request.setRepeatPassword("different456");
+        request.setPassword("Password123!");
+        request.setRepeatPassword("Different456@");
         request.setFullName("Someone");
         request.setRole(UserRole.PATIENT);
 
