@@ -18,6 +18,7 @@ import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.RefreshToken;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.notification.PasswordResetRequestedEvent;
 import com.vitaliy.medcard.repository.PasswordResetTokenRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.RefreshTokenRepository;
@@ -29,8 +30,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,10 +45,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final JavaMailSender mailSender;
+    private final ApplicationEventPublisher eventPublisher;
     private final long refreshTokenExpirationMs;
     private final long passwordResetExpirationMs;
-    private final String mailFrom;
 
     public AuthenticationServiceImpl(
             UserRepository userRepository,
@@ -58,10 +57,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             UserMapper userMapper,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            JavaMailSender mailSender,
+            ApplicationEventPublisher eventPublisher,
             @Value("${jwt.refresh-expiration}") long refreshTokenExpirationMs,
-            @Value("${app.password-reset.expiration}") long passwordResetExpirationMs,
-            @Value("${app.mail.from}") String mailFrom) {
+            @Value("${app.password-reset.expiration}") long passwordResetExpirationMs) {
         this.userRepository = userRepository;
         this.patientProfileRepository = patientProfileRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -69,10 +67,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.mailSender = mailSender;
+        this.eventPublisher = eventPublisher;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
         this.passwordResetExpirationMs = passwordResetExpirationMs;
-        this.mailFrom = mailFrom;
     }
 
     @Override
@@ -185,15 +182,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         resetToken.setCreatedAt(LocalDateTime.now());
         passwordResetTokenRepository.save(resetToken);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(user.getEmail());
-        message.setSubject("Reset your Medical Card password");
-        message.setText("Use this code to reset your password: " + rawToken
-                + "\n\nThis code expires in "
-                + Duration.ofMillis(passwordResetExpirationMs).toMinutes()
-                + " minutes. If you didn't request this, ignore this email.");
-        mailSender.send(message);
+        eventPublisher.publishEvent(new PasswordResetRequestedEvent(
+                user.getEmail(), rawToken,
+                Duration.ofMillis(passwordResetExpirationMs).toMinutes()));
     }
 
     private UserLoginResponseDto issueTokenPair(User user) {

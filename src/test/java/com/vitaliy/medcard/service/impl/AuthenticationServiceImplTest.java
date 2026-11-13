@@ -23,6 +23,7 @@ import com.vitaliy.medcard.model.PasswordResetToken;
 import com.vitaliy.medcard.model.RefreshToken;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.notification.PasswordResetRequestedEvent;
 import com.vitaliy.medcard.repository.PasswordResetTokenRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.RefreshTokenRepository;
@@ -39,8 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,7 +48,6 @@ class AuthenticationServiceImplTest {
 
     private static final long REFRESH_TOKEN_EXPIRATION_MS = 2_592_000_000L;
     private static final long PASSWORD_RESET_EXPIRATION_MS = 900_000L;
-    private static final String MAIL_FROM = "no-reply@medicalcard.local";
 
     @Mock
     private UserRepository userRepository;
@@ -72,7 +71,7 @@ class AuthenticationServiceImplTest {
     private JwtUtil jwtUtil;
 
     @Mock
-    private JavaMailSender mailSender;
+    private ApplicationEventPublisher eventPublisher;
 
     private AuthenticationServiceImpl authenticationService;
 
@@ -82,8 +81,8 @@ class AuthenticationServiceImplTest {
     void setUp() {
         authenticationService = new AuthenticationServiceImpl(
                 userRepository, patientProfileRepository, refreshTokenRepository,
-                passwordResetTokenRepository, userMapper, passwordEncoder, jwtUtil, mailSender,
-                REFRESH_TOKEN_EXPIRATION_MS, PASSWORD_RESET_EXPIRATION_MS, MAIL_FROM);
+                passwordResetTokenRepository, userMapper, passwordEncoder, jwtUtil, eventPublisher,
+                REFRESH_TOKEN_EXPIRATION_MS, PASSWORD_RESET_EXPIRATION_MS);
 
         patientRequest = new UserRegistrationRequestDto();
         patientRequest.setEmail("patient@test.com");
@@ -296,8 +295,8 @@ class AuthenticationServiceImplTest {
     }
 
     @Test
-    @DisplayName("forgotPassword: emails a reset token when the address is known")
-    void forgotPassword_knownEmail_sendsEmail() {
+    @DisplayName("forgotPassword: stores the token hash and publishes the raw token for mailing")
+    void forgotPassword_knownEmail_publishesEvent() {
         User user = new User();
         user.setEmail("patient@test.com");
 
@@ -307,16 +306,18 @@ class AuthenticationServiceImplTest {
 
         ArgumentCaptor<PasswordResetToken> tokenCaptor =
                 ArgumentCaptor.forClass(PasswordResetToken.class);
-        ArgumentCaptor<SimpleMailMessage> mailCaptor =
-                ArgumentCaptor.forClass(SimpleMailMessage.class);
+        ArgumentCaptor<PasswordResetRequestedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PasswordResetRequestedEvent.class);
         verify(passwordResetTokenRepository).save(tokenCaptor.capture());
-        verify(mailSender).send(mailCaptor.capture());
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
 
-        String emailedToken = mailCaptor.getValue().getText()
-                .replaceAll("(?s).*reset your password: (\\S+).*", "$1");
+        PasswordResetRequestedEvent event = eventCaptor.getValue();
+        assertThat(event.email()).isEqualTo("patient@test.com");
+        assertThat(event.expiresInMinutes())
+                .isEqualTo(PASSWORD_RESET_EXPIRATION_MS / 60_000);
         assertThat(tokenCaptor.getValue().getTokenHash())
-                .isNotEqualTo(emailedToken)
-                .isEqualTo(TokenHasher.sha256Hex(emailedToken));
+                .isNotEqualTo(event.rawToken())
+                .isEqualTo(TokenHasher.sha256Hex(event.rawToken()));
     }
 
     @Test
@@ -327,7 +328,7 @@ class AuthenticationServiceImplTest {
         authenticationService.forgotPassword(new ForgotPasswordRequestDto("nobody@test.com"));
 
         verify(passwordResetTokenRepository, never()).save(any());
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
