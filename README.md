@@ -158,7 +158,7 @@ it maintainable:
   rate limiting
 - **Exception Handling** — one centralized `@RestControllerAdvice` with a
   handler per custom exception
-- **Testing Layer** — Mockito for services, Testcontainers (MySQL + MinIO)
+- **Testing Layer** — Mockito for services, Testcontainers (MySQL + MinIO + Redis)
   for repositories/controllers
 
 ## Technology Stack
@@ -173,10 +173,11 @@ it maintainable:
 | Liquibase                       | Boot-managed     | Database migration & versioning, with performance indexes         |
 | MapStruct                       | 1.5.5.Final      | DTO ↔ entity mapping                                              |
 | AWS SDK v2 (S3)                 | 2.25.60          | S3-compatible object storage client (MinIO in dev/compose)        |
+| Redis (Spring Data Redis)       | 7.4              | Rate-limit counters shared across application instances           |
 | openhtmltopdf                   | 1.0.10           | HTML (Thymeleaf) → PDF rendering for card export                  |
 | Spring Boot Actuator + Micrometer/Prometheus | Boot-managed | Health checks, `/actuator/prometheus` metrics |
-| JUnit 5 / Mockito / Testcontainers | 5.10.2 / Boot-managed / Boot-managed | Unit and integration testing         |
-| Docker / Docker Compose         | -                | Containerization of app, MySQL, and MinIO                         |
+| JUnit 5 / Mockito / Testcontainers | 5.10.2 / Boot-managed / 1.21.4 | Unit and integration testing (MySQL, MinIO, Redis) |
+| Docker / Docker Compose         | -                | Containerization of app, MySQL, MinIO and Redis                   |
 | GitHub Actions                  | -                | CI: build, Checkstyle, unit + Testcontainers tests on every push  |
 | Swagger (springdoc-openapi)     | 2.5.0            | API documentation & testing                                        |
 
@@ -191,7 +192,7 @@ it maintainable:
 | Ownership Validator               | One reusable rule for "is this doctor allowed to see this patient" |
 | DTO + MapStruct                   | Clean API contracts, decoupled from JPA entities            |
 | Centralized Exception Handling    | Predictable, consistent error responses                     |
-| Rate Limiting Filter              | Simple in-memory sliding-window guard on auth endpoints      |
+| Rate Limiting Filter              | Redis-backed fixed-window counter on auth endpoints, shared by all instances |
 | Refresh-Token Rotation            | Short-lived JWT + DB-backed, single-use, revocable refresh token |
 | Request Correlation Filter        | Per-request ID (MDC) threaded through all log lines for traceability |
 
@@ -215,10 +216,11 @@ locally.
 - **Docker** — packages the Spring Boot application with a predefined Java
   runtime, plus `curl` for its own container healthcheck against
   `/actuator/health`
-- **Docker Compose** — orchestrates three containers:
+- **Docker Compose** — orchestrates four containers:
   - Spring Boot application
   - MySQL database (with a healthcheck gate before the app starts)
   - MinIO (S3-compatible object storage, with its own healthcheck gate)
+  - Redis (rate-limit counters shared across app instances, healthcheck gated)
 
 This mirrors real-world deployment practice: the app only starts once its
 dependencies report healthy, and the app itself only reports healthy once its
@@ -335,6 +337,10 @@ visit, etc.) — see Swagger UI for the full list.
 
 > Login and registration are rate-limited (5 requests/minute per IP) — you'll
 > get `429 Too Many Requests` if you hit either endpoint faster than that.
+> The counters live in Redis, so the limit holds across several app instances.
+> Behind a reverse proxy set `FORWARD_HEADERS_STRATEGY=native` so the real
+> client IP is used; leave it at `none` when the app is exposed directly,
+> otherwise a client could forge `X-Forwarded-For` to dodge the limit.
 
 > `ADMIN` accounts can't self-register on purpose; to try the
 > `/api/audit-entries` or `/actuator/metrics` endpoints, insert an admin row
