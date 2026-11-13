@@ -10,48 +10,49 @@ import org.junit.jupiter.api.Test;
 
 class JwtUtilTest {
 
+    private static final String SECRET = "test-secret-key-for-jwt-util-unit-tests-1234567890";
+
     private JwtUtil jwtUtil;
 
     @BeforeEach
     void setUp() {
-        jwtUtil = new JwtUtil(
-                "test-secret-key-for-jwt-util-unit-tests-1234567890", 604_800_000L);
+        jwtUtil = new JwtUtil(SECRET, 604_800_000L);
     }
 
     @Test
-    @DisplayName("generateToken: encodes the email and role, both readable back from the token")
-    void generateAndReadToken() {
+    @DisplayName("parseToken: reads back the email and role encoded by generateToken")
+    void generateAndParseToken() {
         String token = jwtUtil.generateToken("doctor@test.com", "DOCTOR");
 
-        assertThat(jwtUtil.isValidToken(token)).isTrue();
-        assertThat(jwtUtil.getEmailFromToken(token)).isEqualTo("doctor@test.com");
-        assertThat(jwtUtil.getRoleFromToken(token)).isEqualTo("DOCTOR");
+        JwtUtil.JwtPrincipal principal = jwtUtil.parseToken(token);
+
+        assertThat(principal.email()).isEqualTo("doctor@test.com");
+        assertThat(principal.role()).isEqualTo("DOCTOR");
     }
 
     @Test
-    @DisplayName("isValidToken: rejects a garbage token")
-    void isValidToken_garbageToken() {
+    @DisplayName("parseToken: rejects a garbage token")
+    void parseToken_garbageToken() {
         assertThrows(JwtAuthenticationException.class,
-                () -> jwtUtil.isValidToken("not-a-real-token"));
+                () -> jwtUtil.parseToken("not-a-real-token"));
     }
 
     @Test
-    @DisplayName("isValidToken: rejects a token signed with a different secret")
-    void isValidToken_wrongSignature() {
+    @DisplayName("parseToken: rejects a token signed with a different secret")
+    void parseToken_wrongSignature() {
         JwtUtil otherJwtUtil = new JwtUtil(
                 "a-completely-different-secret-key-1234567890", 604_800_000L);
         String token = otherJwtUtil.generateToken("doctor@test.com", "DOCTOR");
 
-        assertThrows(JwtAuthenticationException.class, () -> jwtUtil.isValidToken(token));
+        assertThrows(JwtAuthenticationException.class, () -> jwtUtil.parseToken(token));
     }
 
     @Test
-    @DisplayName("isValidToken: rejects an already expired token")
-    void isValidToken_expiredToken() {
-        JwtUtil shortLivedJwtUtil = new JwtUtil(
-                "test-secret-key-for-jwt-util-unit-tests-1234567890", -1_000L);
+    @DisplayName("parseToken: rejects an already expired token")
+    void parseToken_expiredToken() {
+        JwtUtil shortLivedJwtUtil = new JwtUtil(SECRET, -1_000L);
         String token = shortLivedJwtUtil.generateToken("doctor@test.com", "DOCTOR");
 
-        assertThrows(JwtAuthenticationException.class, () -> jwtUtil.isValidToken(token));
+        assertThrows(JwtAuthenticationException.class, () -> jwtUtil.parseToken(token));
     }
 }
