@@ -19,10 +19,11 @@ public class SwaggerConfiguration {
 
     static {
         SpringDocUtils.getConfig().replaceWithSchema(LocalDate.class,
-                new StringSchema().example("20-09-2026").description("Format: dd-MM-yyyy"));
+                new StringSchema().format("date").example("2026-09-20")
+                        .description("ISO-8601 date: yyyy-MM-dd"));
         SpringDocUtils.getConfig().replaceWithSchema(LocalDateTime.class,
-                new StringSchema().example("20-09-2026, 15:23")
-                        .description("Format: dd-MM-yyyy, HH:mm"));
+                new StringSchema().example("2026-09-20T15:23:00")
+                        .description("ISO-8601 local date-time: yyyy-MM-ddTHH:mm:ss"));
     }
 
     @Bean
