@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -33,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @AutoConfigureMockMvc
 class DocumentControllerTest extends IntegrationTestBase {
+
+    private static final byte[] PDF_CONTENT = "%PDF-1.7 test content".getBytes();
 
     @Autowired
     private MockMvc mockMvc;
@@ -77,7 +80,7 @@ class DocumentControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/patients/me/documents: uploads a document to my own card")
     void uploadMyDocument_success() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "blood-test.pdf", "application/pdf", "test content".getBytes());
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
 
         MvcResult result = mockMvc.perform(multipart("/api/patients/me/documents")
                         .file(file)
@@ -90,6 +93,47 @@ class DocumentControllerTest extends IntegrationTestBase {
                 result.getResponse().getContentAsString(), DocumentResponseDto.class);
 
         assertThat(response.originalFileName()).isEqualTo("blood-test.pdf");
+    }
+
+    @Test
+    @DisplayName("POST /api/patients/me/documents: rejects a non-PDF file sent as application/pdf")
+    void uploadMyDocument_spoofedContentType() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "invoice.pdf", "application/pdf", "MZ executable bytes".getBytes());
+
+        mockMvc.perform(multipart("/api/patients/me/documents")
+                        .file(file)
+                        .param("documentType", "OTHER")
+                        .header("Authorization", bearerToken(patientUser)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /api/patients/me/documents/{id}/download: encodes the file name safely")
+    void downloadMyDocument_contentDispositionIsEncoded() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "аналіз \"крові\".pdf", "application/pdf", PDF_CONTENT);
+
+        MvcResult uploadResult = mockMvc.perform(multipart("/api/patients/me/documents")
+                        .file(file)
+                        .param("documentType", "LAB_RESULT")
+                        .header("Authorization", bearerToken(patientUser)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        DocumentResponseDto uploaded = objectMapper.readValue(
+                uploadResult.getResponse().getContentAsString(), DocumentResponseDto.class);
+
+        MvcResult downloadResult = mockMvc.perform(
+                        get("/api/patients/me/documents/{id}/download", uploaded.id())
+                                .header("Authorization", bearerToken(patientUser)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String header = downloadResult.getResponse().getHeader(HttpHeaders.CONTENT_DISPOSITION);
+        assertThat(header)
+                .startsWith("attachment;")
+                .contains("filename*=UTF-8''")
+                .doesNotContain("\"крові\"");
     }
 
     @Test
@@ -109,7 +153,7 @@ class DocumentControllerTest extends IntegrationTestBase {
     @DisplayName("GET /api/patients/me/documents: lists my uploaded documents")
     void getMyDocuments_success() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "blood-test.pdf", "application/pdf", "test content".getBytes());
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
 
         mockMvc.perform(multipart("/api/patients/me/documents")
                         .file(file)
@@ -126,7 +170,7 @@ class DocumentControllerTest extends IntegrationTestBase {
     @DisplayName("DELETE /api/patients/me/documents/{id}: removes an uploaded document")
     void deleteMyDocument_success() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "blood-test.pdf", "application/pdf", "test content".getBytes());
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
 
         MvcResult uploadResult = mockMvc.perform(multipart("/api/patients/me/documents")
                         .file(file)
@@ -176,7 +220,7 @@ class DocumentControllerTest extends IntegrationTestBase {
 
     private DocumentResponseDto uploadAs(User user) throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "blood-test.pdf", "application/pdf", "test content".getBytes());
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
 
         MvcResult result = mockMvc.perform(multipart("/api/patients/me/documents")
                         .file(file)
