@@ -5,15 +5,19 @@ import com.vitaliy.medcard.dto.CareLinkRequestDto;
 import com.vitaliy.medcard.dto.CareLinkResponseDto;
 import com.vitaliy.medcard.dto.PatientSummaryDto;
 import com.vitaliy.medcard.exception.CareLinkAlreadyExistsException;
+import com.vitaliy.medcard.exception.CareLinkNotFoundException;
 import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
+import com.vitaliy.medcard.exception.UserNotFoundException;
 import com.vitaliy.medcard.mapper.CareLinkMapper;
 import com.vitaliy.medcard.model.Allergy;
 import com.vitaliy.medcard.model.CareLink;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
+import com.vitaliy.medcard.model.status.UserRole;
 import com.vitaliy.medcard.repository.AllergyRepository;
 import com.vitaliy.medcard.repository.CareLinkRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
+import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.repository.specification.CareLinkSpecifications;
 import com.vitaliy.medcard.service.CareLinkService;
 import com.vitaliy.medcard.util.AgeCalculator;
@@ -37,33 +41,56 @@ public class CareLinkServiceImpl implements CareLinkService {
 
     private final PatientProfileRepository patientProfileRepository;
 
+    private final UserRepository userRepository;
+
     private final AllergyRepository allergyRepository;
 
     private final CareLinkMapper careLinkMapper;
 
     @Override
-    @Audited(action = "ASSIGN_CARE_LINK")
-    public CareLinkResponseDto assignPatientToDoctor(
-            User currentDoctor, CareLinkRequestDto request) {
+    @Audited(action = "GRANT_DOCTOR_ACCESS")
+    public CareLinkResponseDto grantDoctorAccess(
+            User currentPatient, CareLinkRequestDto request) {
+        PatientProfile patient = findPatientByUserId(currentPatient.getId());
 
-        PatientProfile patient = patientProfileRepository.findById(request.patientId())
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + request.patientId() + "!"));
+        User doctor = userRepository.findByEmail(request.doctorEmail())
+                .filter(user -> user.getRole() == UserRole.DOCTOR)
+                .orElseThrow(() -> new UserNotFoundException(
+                        "Doctor not found with email: " + request.doctorEmail() + "!"));
 
-        if (careLinkRepository.existsByDoctorIdAndPatientId(
-                currentDoctor.getId(), patient.getId())) {
+        if (careLinkRepository.existsByDoctorIdAndPatientId(doctor.getId(), patient.getId())) {
             throw new CareLinkAlreadyExistsException(
-                    "This patient is already assigned to you!");
+                    "This doctor already has access to your card!");
         }
 
         CareLink careLink = new CareLink();
-        careLink.setDoctor(currentDoctor);
+        careLink.setDoctor(doctor);
         careLink.setPatient(patient);
         careLink.setAssignedAt(LocalDateTime.now());
 
-        careLink = careLinkRepository.save(careLink);
+        return careLinkMapper.toDto(careLinkRepository.save(careLink));
+    }
 
-        return careLinkMapper.toDto(careLink);
+    @Override
+    @Transactional(readOnly = true)
+    public List<CareLinkResponseDto> getMyDoctors(User currentPatient) {
+        PatientProfile patient = findPatientByUserId(currentPatient.getId());
+
+        return careLinkRepository.findByPatientId(patient.getId()).stream()
+                .map(careLinkMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    @Audited(action = "REVOKE_DOCTOR_ACCESS")
+    public void revokeDoctorAccess(User currentPatient, Long careLinkId) {
+        PatientProfile patient = findPatientByUserId(currentPatient.getId());
+
+        CareLink careLink = careLinkRepository.findByIdAndPatientId(careLinkId, patient.getId())
+                .orElseThrow(() -> new CareLinkNotFoundException(
+                        "Care link not found: " + careLinkId + "!"));
+
+        careLinkRepository.delete(careLink);
     }
 
     @Override
@@ -95,5 +122,11 @@ public class CareLinkServiceImpl implements CareLinkService {
                     AgeCalculator.calculateAge(patient.getDateOfBirth()),
                     allergiesByPatientId.getOrDefault(patient.getId(), List.of()));
         });
+    }
+
+    private PatientProfile findPatientByUserId(Long userId) {
+        return patientProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new PatientProfileNotFoundException(
+                        "Patient profile not found for user: " + userId + "!"));
     }
 }

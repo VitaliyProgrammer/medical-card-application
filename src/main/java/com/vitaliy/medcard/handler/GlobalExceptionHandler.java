@@ -2,6 +2,7 @@ package com.vitaliy.medcard.handler;
 
 import com.vitaliy.medcard.exception.AllergyNotFoundException;
 import com.vitaliy.medcard.exception.CareLinkAlreadyExistsException;
+import com.vitaliy.medcard.exception.CareLinkNotFoundException;
 import com.vitaliy.medcard.exception.ConditionNotFoundException;
 import com.vitaliy.medcard.exception.DocumentNotFoundException;
 import com.vitaliy.medcard.exception.FileStorageException;
@@ -23,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -130,6 +132,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body(ex.getMessage()));
     }
 
+    @ExceptionHandler(CareLinkNotFoundException.class)
+    public ResponseEntity<Object> handleCareLinkNotFound(CareLinkNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
+    }
+
     @ExceptionHandler(CareLinkAlreadyExistsException.class)
     public ResponseEntity<Object> handleCareLinkAlreadyExists(CareLinkAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body(ex.getMessage()));
@@ -149,6 +156,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleInvalidPasswordResetToken(
             InvalidPasswordResetTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex) {
+        logger.warn("Rejected a write that violates a database constraint", ex);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(body("This record conflicts with existing data!"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
