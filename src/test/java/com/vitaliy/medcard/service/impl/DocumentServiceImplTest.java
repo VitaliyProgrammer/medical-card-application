@@ -24,6 +24,7 @@ import com.vitaliy.medcard.service.FileStorageService;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceImplTest {
@@ -76,6 +79,13 @@ class DocumentServiceImplTest {
         document.setOriginalFileName("blood-test.pdf");
         document.setStoredFileName("uuid_blood-test.pdf");
         document.setContentType("application/pdf");
+
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void tearDown() {
+        TransactionSynchronizationManager.clearSynchronization();
     }
 
     @Test
@@ -129,14 +139,67 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    @DisplayName("deleteMyDocument: deletes the stored file and the database row")
+    @DisplayName("deleteMyDocument: deletes the row now and the stored file only after commit")
     void deleteMyDocument_success() {
         when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
 
         documentService.deleteMyDocument(patientUser, document.getId());
 
-        verify(fileStorageService).delete(document.getStoredFileName());
         verify(documentRepository).delete(document);
+        verify(fileStorageService, never()).delete(any());
+
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+
+        verify(fileStorageService).delete(document.getStoredFileName());
+    }
+
+    @Test
+    @DisplayName("deleteMyDocument: keeps the stored file when the transaction rolls back")
+    void deleteMyDocument_rollback_keepsFile() {
+        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+
+        documentService.deleteMyDocument(patientUser, document.getId());
+        TransactionSynchronizationManager.getSynchronizations().forEach(sync ->
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("uploadMyDocument: removes the stored file when the transaction rolls back")
+    void uploadMyDocument_rollback_removesOrphanFile() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "blood-test.pdf", "application/pdf", "content".getBytes());
+
+        when(patientProfileRepository.findByUserId(patientUser.getId()))
+                .thenReturn(Optional.of(patient));
+        when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+
+        documentService.uploadMyDocument(patientUser, file, DocumentType.LAB_RESULT);
+        TransactionSynchronizationManager.getSynchronizations().forEach(sync ->
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+        verify(fileStorageService).delete("uuid_blood-test.pdf");
+    }
+
+    @Test
+    @DisplayName("uploadMyDocument: keeps the stored file when the transaction commits")
+    void uploadMyDocument_commit_keepsFile() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "blood-test.pdf", "application/pdf", "content".getBytes());
+
+        when(patientProfileRepository.findByUserId(patientUser.getId()))
+                .thenReturn(Optional.of(patient));
+        when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+
+        documentService.uploadMyDocument(patientUser, file, DocumentType.LAB_RESULT);
+        TransactionSynchronizationManager.getSynchronizations().forEach(sync ->
+                sync.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+
+        verify(fileStorageService, never()).delete(any());
     }
 
     @Test
