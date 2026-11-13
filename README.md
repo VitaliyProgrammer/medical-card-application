@@ -115,6 +115,8 @@ testing.
 - Thymeleaf template rendered to PDF via openhtmltopdf
 - A doctor can generate a 48-hour public, tokenized link that reuses the
   exact same export pipeline — no separate rendering code path
+- The token is stored only as a SHA-256 hash, every public download is
+  audited, and the doctor can revoke the link before it expires
 
 🔍 **Filtering and searching**
 - Powered by the **Specification** pattern for a doctor's paginated,

@@ -31,3 +31,5 @@ databaseChangeLog:
       file: db/changelog/changes/create_password_reset_tokens_table.yaml
   - include:
       file: db/changelog/changes/hash_stored_tokens.yaml
+  - include:
+      file: db/changelog/changes/harden_share_links.yaml
