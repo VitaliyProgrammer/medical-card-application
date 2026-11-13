@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: hash-stored-tokens
+      author: vitaliy
+      comment: >-
+        Tokens are now stored as SHA-256 hashes. Existing rows hold plain-text
+        values that can never match a hash, so they are removed (all users
+        have to log in again, pending password reset codes stop working).
+      changes:
+        - delete:
+            tableName: refresh_tokens
+        - delete:
+            tableName: password_reset_tokens
+        - renameColumn:
+            tableName: refresh_tokens
+            oldColumnName: token
+            newColumnName: token_hash
+            columnDataType: VARCHAR(64)
+        - addNotNullConstraint:
+            tableName: refresh_tokens
+            columnName: token_hash
+            columnDataType: VARCHAR(64)
+        - renameColumn:
+            tableName: password_reset_tokens
+            oldColumnName: token
+            newColumnName: token_hash
+            columnDataType: VARCHAR(64)
+        - addNotNullConstraint:
+            tableName: password_reset_tokens
+            columnName: token_hash
+            columnDataType: VARCHAR(64)
