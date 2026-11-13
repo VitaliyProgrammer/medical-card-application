@@ -24,6 +24,7 @@ import com.vitaliy.medcard.repository.RefreshTokenRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.security.JwtUtil;
 import com.vitaliy.medcard.service.AuthenticationService;
+import com.vitaliy.medcard.util.TokenHasher;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -125,7 +126,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Transactional
     public UserLoginResponseDto refresh(RefreshTokenRequestDto request) {
 
-        RefreshToken storedToken = refreshTokenRepository.findByToken(request.refreshToken())
+        RefreshToken storedToken = refreshTokenRepository
+                .findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
                 .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid!"));
 
         if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
@@ -140,7 +142,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void logout(RefreshTokenRequestDto request) {
-        refreshTokenRepository.findByToken(request.refreshToken())
+        refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
                 .ifPresent(token -> token.setRevoked(true));
     }
 
@@ -153,7 +155,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequestDto request) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+        PasswordResetToken resetToken = passwordResetTokenRepository
+                .findByTokenHash(TokenHasher.sha256Hex(request.token()))
                 .orElseThrow(() ->
                         new InvalidPasswordResetTokenException("Password reset token is invalid!"));
 
@@ -171,8 +174,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private void issuePasswordResetToken(User user) {
+        String rawToken = UUID.randomUUID().toString();
+
         PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken(UUID.randomUUID().toString());
+        resetToken.setTokenHash(TokenHasher.sha256Hex(rawToken));
         resetToken.setUser(user);
         resetToken.setExpiresAt(
                 LocalDateTime.now().plus(Duration.ofMillis(passwordResetExpirationMs)));
@@ -184,7 +189,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         message.setFrom(mailFrom);
         message.setTo(user.getEmail());
         message.setSubject("Reset your Medical Card password");
-        message.setText("Use this code to reset your password: " + resetToken.getToken()
+        message.setText("Use this code to reset your password: " + rawToken
                 + "\n\nThis code expires in "
                 + Duration.ofMillis(passwordResetExpirationMs).toMinutes()
                 + " minutes. If you didn't request this, ignore this email.");
@@ -192,8 +197,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private UserLoginResponseDto issueTokenPair(User user) {
+        String rawRefreshToken = UUID.randomUUID().toString();
+
         RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setTokenHash(TokenHasher.sha256Hex(rawRefreshToken));
         refreshToken.setUser(user);
         refreshToken.setExpiresAt(
                 LocalDateTime.now().plus(Duration.ofMillis(refreshTokenExpirationMs)));
@@ -202,6 +209,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         refreshTokenRepository.save(refreshToken);
 
         String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new UserLoginResponseDto(accessToken, refreshToken.getToken());
+        return new UserLoginResponseDto(accessToken, rawRefreshToken);
     }
 }
