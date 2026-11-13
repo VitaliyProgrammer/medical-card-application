@@ -8,8 +8,11 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 public abstract class IntegrationTestBase {
 
+    private static final int MYSQL_STARTUP_TIMEOUT_SECONDS = 300;
+
     static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>("mysql:8.0")
-            .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M");
+            .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M")
+            .withStartupTimeoutSeconds(MYSQL_STARTUP_TIMEOUT_SECONDS);
 
     static final GenericContainer<?> MINIO_CONTAINER =
             new GenericContainer<>("cgr.dev/chainguard/minio:latest-dev")
