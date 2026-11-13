@@ -22,9 +22,13 @@ public abstract class IntegrationTestBase {
                     .withCommand("server", "/data")
                     .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000));
 
+    static final GenericContainer<?> REDIS_CONTAINER =
+            new GenericContainer<>("redis:7.4-alpine").withExposedPorts(6379);
+
     static {
         MYSQL_CONTAINER.start();
         MINIO_CONTAINER.start();
+        REDIS_CONTAINER.start();
     }
 
     @DynamicPropertySource
@@ -34,5 +38,7 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.password", MYSQL_CONTAINER::getPassword);
         registry.add("app.storage.endpoint", () -> "http://" + MINIO_CONTAINER.getHost()
                 + ":" + MINIO_CONTAINER.getMappedPort(9000));
+        registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS_CONTAINER.getMappedPort(6379));
     }
 }

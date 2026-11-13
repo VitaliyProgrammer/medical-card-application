@@ -18,7 +18,7 @@ exactly where it should.
 |-------------------|--------------------------------------------------|
 | Language / runtime | Java 17, Spring Boot 3.2.4                       |
 | Web                | Spring MVC (REST), springdoc-openapi (Swagger)   |
-| Security           | Spring Security, JWT (jjwt, 15-min access token) + DB-backed rotating refresh token, method-level `@PreAuthorize`, per-IP rate limiting on auth |
+| Security           | Spring Security, JWT (jjwt, 15-min access token) + DB-backed rotating refresh token, method-level `@PreAuthorize`, per-IP rate limiting on auth (Redis-backed, shared across instances) |
 | Persistence        | Spring Data JPA / Hibernate, MySQL 8, indexed hot-path queries |
 | Migrations         | Liquibase (YAML changesets)                      |
 | Mapping            | MapStruct                                        |
