@@ -24,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -155,6 +156,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleInvalidPasswordResetToken(
             InvalidPasswordResetTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex) {
+        logger.warn("Rejected a write that violates a database constraint", ex);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(body("This record conflicts with existing data!"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
