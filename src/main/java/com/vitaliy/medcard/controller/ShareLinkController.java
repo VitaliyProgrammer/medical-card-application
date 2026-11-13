@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +37,15 @@ public class ShareLinkController {
             Authentication authentication, @PathVariable Long id) {
         User currentDoctor = currentUserService.getCurrentUser(authentication);
         return shareLinkService.createShareLink(currentDoctor, id);
+    }
+
+    @DeleteMapping("/api/share-links/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('DOCTOR')")
+    @Operation(summary = "Revoke a share link I created before it expires")
+    public void revokeShareLink(Authentication authentication, @PathVariable Long id) {
+        User currentDoctor = currentUserService.getCurrentUser(authentication);
+        shareLinkService.revokeShareLink(currentDoctor, id);
     }
 
     @GetMapping("/api/share-links/{token}/export")

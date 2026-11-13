@@ -86,7 +86,7 @@ who triggered it is deleted.
 | `DocumentController`            | `/api/patients/me\|{id}/documents`   | multipart upload, download |
 | `ReminderController`            | `/api/patients/me/reminders`         | patient-only |
 | `PatientCardExportController`   | `/api/patients/me\|{id}/export`      | PDF |
-| `ShareLinkController`           | `/api/patients/{id}/share-links`,<br>`/api/share-links/{token}/export` | second path is PUBLIC |
+| `ShareLinkController`           | `/api/patients/{id}/share-links`,<br>`/api/share-links/{id}` (DELETE),<br>`/api/share-links/{token}/export` | export is PUBLIC; token stored hashed, revocable by its creator, every export audited |
 | `AuditEntryController`          | `/api/audit-entries`                 | ADMIN only |
 
 Full request/response contracts are in Swagger UI at `/swagger-ui.html`.
