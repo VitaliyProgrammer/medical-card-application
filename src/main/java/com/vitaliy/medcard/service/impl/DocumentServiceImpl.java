@@ -4,6 +4,7 @@ import com.vitaliy.medcard.aspect.Audited;
 import com.vitaliy.medcard.dto.DocumentFileDto;
 import com.vitaliy.medcard.dto.DocumentResponseDto;
 import com.vitaliy.medcard.exception.DocumentNotFoundException;
+import com.vitaliy.medcard.exception.FileStorageException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
 import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.exception.UnsupportedFileTypeException;
@@ -16,10 +17,12 @@ import com.vitaliy.medcard.repository.DocumentRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.service.DocumentService;
 import com.vitaliy.medcard.service.FileStorageService;
+import com.vitaliy.medcard.util.FileSignatures;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -31,9 +34,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @Transactional
 public class DocumentServiceImpl implements DocumentService {
-
-    private static final Set<String> ALLOWED_CONTENT_TYPES =
-            Set.of("application/pdf", "image/jpeg", "image/png");
 
     private static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024;
 
@@ -125,9 +125,22 @@ public class DocumentServiceImpl implements DocumentService {
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
             throw new UnsupportedFileTypeException("File exceeds the 10 MB size limit!");
         }
-        if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
+        if (!FileSignatures.supportedContentTypes().contains(file.getContentType())) {
             throw new UnsupportedFileTypeException(
                     "Unsupported file type: " + file.getContentType() + "!");
+        }
+        if (!FileSignatures.matches(file.getContentType(), readHeader(file))) {
+            throw new UnsupportedFileTypeException(
+                    "File content doesn't match its declared type: "
+                            + file.getContentType() + "!");
+        }
+    }
+
+    private byte[] readHeader(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            return inputStream.readNBytes(FileSignatures.HEADER_LENGTH);
+        } catch (IOException exception) {
+            throw new FileStorageException("Failed to read the uploaded file!");
         }
     }
 

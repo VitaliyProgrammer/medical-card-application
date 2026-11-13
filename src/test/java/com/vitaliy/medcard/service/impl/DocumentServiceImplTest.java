@@ -37,6 +37,8 @@ import org.springframework.mock.web.MockMultipartFile;
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceImplTest {
 
+    private static final byte[] PDF_CONTENT = "%PDF-1.7 test content".getBytes();
+
     @Mock
     private DocumentRepository documentRepository;
 
@@ -82,7 +84,7 @@ class DocumentServiceImplTest {
     @DisplayName("uploadMyDocument: stores the file and saves its metadata")
     void uploadMyDocument_success() {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "blood-test.pdf", "application/pdf", "content".getBytes());
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
         DocumentResponseDto responseDto = new DocumentResponseDto(
                 100L, DocumentType.LAB_RESULT, "blood-test.pdf", "application/pdf", 7L,
                 "Jane Patient", null);
@@ -126,6 +128,21 @@ class DocumentServiceImplTest {
 
         assertThrows(UnsupportedFileTypeException.class,
                 () -> documentService.uploadMyDocument(patientUser, emptyFile, DocumentType.OTHER));
+    }
+
+    @Test
+    @DisplayName("uploadMyDocument: rejects a file whose content doesn't match its declared type")
+    void uploadMyDocument_spoofedContentType() {
+        MockMultipartFile spoofed = new MockMultipartFile(
+                "file", "report.pdf", "application/pdf", "MZ executable bytes".getBytes());
+
+        when(patientProfileRepository.findByUserId(patientUser.getId()))
+                .thenReturn(Optional.of(patient));
+
+        assertThrows(UnsupportedFileTypeException.class,
+                () -> documentService.uploadMyDocument(patientUser, spoofed, DocumentType.OTHER));
+
+        verify(fileStorageService, never()).store(any());
     }
 
     @Test
