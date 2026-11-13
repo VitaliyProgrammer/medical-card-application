@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtUtil {
     private static final String ROLE_CLAIM = "role";
+    private static final int MIN_SECRET_BYTES = 32;
 
     private final Key secret;
     private final JwtParser parser;
@@ -22,7 +23,12 @@ public class JwtUtil {
 
     public JwtUtil(@Value("${jwt.secret}") String secretString,
                     @Value("${jwt.expiration}") long expiration) {
-        this.secret = Keys.hmacShaKeyFor(secretString.getBytes(StandardCharsets.UTF_8));
+        byte[] secretBytes = secretString.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException("jwt.secret (JWT_SECRET) must be at least "
+                    + MIN_SECRET_BYTES + " bytes long for HS256, got " + secretBytes.length);
+        }
+        this.secret = Keys.hmacShaKeyFor(secretBytes);
         this.parser = Jwts.parserBuilder().setSigningKey(secret).build();
         this.expiration = expiration;
     }

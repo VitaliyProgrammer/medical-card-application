@@ -31,6 +31,15 @@ class JwtUtilTest {
     }
 
     @Test
+    @DisplayName("constructor: refuses to start with a secret shorter than 256 bits")
+    void constructor_shortSecret_failsFast() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new JwtUtil("too-short-secret", 60_000L));
+
+        assertThat(exception.getMessage()).contains("JWT_SECRET").contains("32 bytes");
+    }
+
+    @Test
     @DisplayName("parseToken: rejects a garbage token")
     void parseToken_garbageToken() {
         assertThrows(JwtAuthenticationException.class,

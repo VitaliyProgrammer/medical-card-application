@@ -266,6 +266,10 @@ MINIO_ROOT_PASSWORD=medcard_storage_pass
 STORAGE_BUCKET=medical-card-documents
 ```
 
+> `JWT_SECRET` is required and must be at least 32 characters (256 bits).
+> There is deliberately no default: the app refuses to start without it
+> rather than silently signing tokens with a well-known key.
+
 ▶️ Run the Application (Docker)
 
 ```bash
