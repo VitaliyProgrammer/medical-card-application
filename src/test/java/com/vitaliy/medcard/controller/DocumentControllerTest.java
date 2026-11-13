@@ -9,9 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vitaliy.medcard.IntegrationTestBase;
 import com.vitaliy.medcard.dto.DocumentResponseDto;
+import com.vitaliy.medcard.model.CareLink;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.repository.CareLinkRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.security.JwtUtil;
@@ -43,6 +45,9 @@ class DocumentControllerTest extends IntegrationTestBase {
 
     @Autowired
     private PatientProfileRepository patientProfileRepository;
+
+    @Autowired
+    private CareLinkRepository careLinkRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -136,6 +141,78 @@ class DocumentControllerTest extends IntegrationTestBase {
         mockMvc.perform(delete("/api/patients/me/documents/{id}", uploaded.id())
                         .header("Authorization", bearerToken(patientUser)))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("GET /api/patients/{id}/documents/{documentId}/download: "
+            + "an assigned doctor downloads their patient's document")
+    void downloadPatientDocument_success() throws Exception {
+        User doctor = saveUser("doctor@test.com", "Dr. House", UserRole.DOCTOR);
+        assignToDoctor(doctor, patientProfile);
+        DocumentResponseDto uploaded = uploadAs(patientUser);
+
+        mockMvc.perform(get("/api/patients/{id}/documents/{documentId}/download",
+                        patientProfile.getId(), uploaded.id())
+                        .header("Authorization", bearerToken(doctor)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/patients/{id}/documents/{documentId}/download: "
+            + "a doctor can't download another patient's document via their own patient's id")
+    void downloadPatientDocument_documentOfAnotherPatient() throws Exception {
+        User doctor = saveUser("doctor@test.com", "Dr. House", UserRole.DOCTOR);
+        assignToDoctor(doctor, patientProfile);
+
+        User otherPatientUser = saveUser("other@test.com", "John Other", UserRole.PATIENT);
+        savePatientProfile(otherPatientUser);
+        DocumentResponseDto otherPatientDocument = uploadAs(otherPatientUser);
+
+        mockMvc.perform(get("/api/patients/{id}/documents/{documentId}/download",
+                        patientProfile.getId(), otherPatientDocument.id())
+                        .header("Authorization", bearerToken(doctor)))
+                .andExpect(status().isNotFound());
+    }
+
+    private DocumentResponseDto uploadAs(User user) throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "blood-test.pdf", "application/pdf", "test content".getBytes());
+
+        MvcResult result = mockMvc.perform(multipart("/api/patients/me/documents")
+                        .file(file)
+                        .param("documentType", "LAB_RESULT")
+                        .header("Authorization", bearerToken(user)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readValue(
+                result.getResponse().getContentAsString(), DocumentResponseDto.class);
+    }
+
+    private User saveUser(String email, String fullName, UserRole role) {
+        User user = new User();
+        user.setEmail(email);
+        user.setPassword("hashed");
+        user.setFullName(fullName);
+        user.setRole(role);
+        user.setCreatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+
+    private void savePatientProfile(User user) {
+        PatientProfile profile = new PatientProfile();
+        profile.setUser(user);
+        profile.setCreatedAt(LocalDateTime.now());
+        profile.setUpdatedAt(LocalDateTime.now());
+        patientProfileRepository.save(profile);
+    }
+
+    private void assignToDoctor(User doctor, PatientProfile patient) {
+        CareLink careLink = new CareLink();
+        careLink.setDoctor(doctor);
+        careLink.setPatient(patient);
+        careLink.setAssignedAt(LocalDateTime.now());
+        careLinkRepository.save(careLink);
     }
 
     private String bearerToken(User user) {

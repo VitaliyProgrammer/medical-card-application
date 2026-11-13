@@ -195,4 +195,40 @@ class DocumentServiceImplTest {
 
         assertThat(result).containsExactly(responseDto);
     }
+
+    @Test
+    @DisplayName("downloadDocumentForDoctor: returns the file when it belongs to the patient")
+    void downloadDocumentForDoctor_success() {
+        User doctor = new User();
+        doctor.setId(5L);
+        Resource resource = org.mockito.Mockito.mock(Resource.class);
+
+        doNothing().when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
+        when(documentRepository.findByIdAndPatientId(document.getId(), patient.getId()))
+                .thenReturn(Optional.of(document));
+        when(fileStorageService.load(document.getStoredFileName())).thenReturn(resource);
+
+        DocumentFileDto result = documentService.downloadDocumentForDoctor(
+                doctor, patient.getId(), document.getId());
+
+        assertThat(result.resource()).isEqualTo(resource);
+    }
+
+    @Test
+    @DisplayName("downloadDocumentForDoctor: a document of another patient is not found")
+    void downloadDocumentForDoctor_documentOfAnotherPatient() {
+        User doctor = new User();
+        doctor.setId(5L);
+        Long assignedPatientId = 20L;
+
+        doNothing().when(patientAccessValidator).validateDoctorAccess(doctor, assignedPatientId);
+        when(documentRepository.findByIdAndPatientId(document.getId(), assignedPatientId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(DocumentNotFoundException.class,
+                () -> documentService.downloadDocumentForDoctor(
+                        doctor, assignedPatientId, document.getId()));
+
+        verify(fileStorageService, never()).load(any());
+    }
 }

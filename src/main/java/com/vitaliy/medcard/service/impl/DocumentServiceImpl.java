@@ -92,7 +92,7 @@ public class DocumentServiceImpl implements DocumentService {
             User currentDoctor, Long patientId, Long documentId) {
         patientAccessValidator.validateDoctorAccess(currentDoctor, patientId);
 
-        Document document = documentRepository.findById(documentId)
+        Document document = documentRepository.findByIdAndPatientId(documentId, patientId)
                 .orElseThrow(() -> new DocumentNotFoundException(
                         "Document not found: " + documentId + "!"));
 
