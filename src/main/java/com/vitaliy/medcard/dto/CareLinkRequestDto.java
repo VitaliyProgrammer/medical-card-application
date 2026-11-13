@@ -1,9 +1,11 @@
 package com.vitaliy.medcard.dto;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 public record CareLinkRequestDto(
-        @NotNull
-        Long patientId
+        @NotBlank
+        @Email
+        String doctorEmail
 ) {
 }

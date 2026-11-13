@@ -1,7 +1,8 @@
 # Medical Card (Pulse) — Technical Architecture
 
 Portfolio backend for a personal health record (PHR) service. A patient owns and
-edits their own medical card; an assigned doctor (linked via `CareLink`) can view
+edits their own medical card and decides which doctors may see it; a doctor the
+patient granted access to (a `CareLink`, created and revoked only by the patient) can view
 and add clinical data to it. Built with Java 17, Spring Boot 3.2, MySQL 8, JWT
 auth, Liquibase, MapStruct, and a small custom AOP audit layer.
 
@@ -78,7 +79,7 @@ who triggered it is deleted.
 |---------------------------------|--------------------------------------|-------|
 | `AuthenticationController`      | `/api/auth`                          | public; `/login` issues an access + refresh token, `/refresh` rotates it, `/logout` revokes it |
 | `PatientProfileController`      | `/api/patients`                      | `/me` = patient, `/{id}` = doctor/admin |
-| `CareLinkController`            | `/api/care-links`                    | includes `/my-patients` search+paging |
+| `CareLinkController`            | `/api/patients/me/care-links`,<br>`/api/care-links/my-patients` | patient grants/lists/revokes doctor access; doctor searches+pages their patients |
 | `AllergyController`             | `/api/patients/me\|{id}/allergies`   | |
 | `ConditionController`           | `/api/patients/me\|{id}/conditions`  | |
 | `VisitController`               | `/api/patients/me\|{id}/visits`      | append-only |

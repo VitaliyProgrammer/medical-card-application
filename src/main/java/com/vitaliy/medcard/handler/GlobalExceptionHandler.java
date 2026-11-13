@@ -2,6 +2,7 @@ package com.vitaliy.medcard.handler;
 
 import com.vitaliy.medcard.exception.AllergyNotFoundException;
 import com.vitaliy.medcard.exception.CareLinkAlreadyExistsException;
+import com.vitaliy.medcard.exception.CareLinkNotFoundException;
 import com.vitaliy.medcard.exception.ConditionNotFoundException;
 import com.vitaliy.medcard.exception.DocumentNotFoundException;
 import com.vitaliy.medcard.exception.FileStorageException;
@@ -128,6 +129,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ForbiddenActionException.class)
     public ResponseEntity<Object> handleForbiddenAction(ForbiddenActionException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CareLinkNotFoundException.class)
+    public ResponseEntity<Object> handleCareLinkNotFound(CareLinkNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
     }
 
     @ExceptionHandler(CareLinkAlreadyExistsException.class)

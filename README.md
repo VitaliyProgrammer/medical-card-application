@@ -317,8 +317,11 @@ curl -X POST http://localhost:8080/api/auth/refresh \
   -d '{"refreshToken": "<refreshToken>"}'
 ```
 
-Register a second account with `"role": "DOCTOR"` to try the doctor-side
-endpoints (`/api/care-links`, viewing an assigned patient's card, recording a
+Register a second account with `"role": "DOCTOR"`, then, as the patient, grant
+that doctor access with `POST /api/patients/me/care-links {"doctorEmail": "..."}`
+(access can be revoked any time via `DELETE /api/patients/me/care-links/{id}`).
+Only then can the doctor use the doctor-side
+endpoints (`/api/care-links/my-patients`, viewing the patient's card, recording a
 visit, etc.) — see Swagger UI for the full list.
 
 > Login and registration are rate-limited (5 requests/minute per IP) — you'll
