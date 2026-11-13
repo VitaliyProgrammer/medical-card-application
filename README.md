@@ -326,6 +326,9 @@ Only then can the doctor use the doctor-side
 endpoints (`/api/care-links/my-patients`, viewing the patient's card, recording a
 visit, etc.) — see Swagger UI for the full list.
 
+> All dates in requests and responses are ISO-8601: `yyyy-MM-dd` for dates,
+> `yyyy-MM-ddTHH:mm:ss` for date-times; error timestamps are UTC instants.
+
 > Login and registration are rate-limited (5 requests/minute per IP) — you'll
 > get `429 Too Many Requests` if you hit either endpoint faster than that.
 

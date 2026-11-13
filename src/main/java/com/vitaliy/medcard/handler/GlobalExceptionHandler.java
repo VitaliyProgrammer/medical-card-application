@@ -19,8 +19,7 @@ import com.vitaliy.medcard.exception.ShareLinkExpiredException;
 import com.vitaliy.medcard.exception.ShareLinkNotFoundException;
 import com.vitaliy.medcard.exception.UnsupportedFileTypeException;
 import com.vitaliy.medcard.exception.UserNotFoundException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,9 +38,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-
-    private static final DateTimeFormatter TIMESTAMP_FORMAT =
-            DateTimeFormatter.ofPattern("dd-MM-yyyy, HH:mm");
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
@@ -181,7 +177,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private Map<String, Object> body(Object errorDetails) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now().format(TIMESTAMP_FORMAT));
+        body.put("timestamp", Instant.now());
         body.put("error", errorDetails);
         return body;
     }

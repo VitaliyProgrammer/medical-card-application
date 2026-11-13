@@ -1,6 +1,8 @@
 package com.vitaliy.medcard.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vitaliy.medcard.IntegrationTestBase;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -106,6 +109,27 @@ class PatientProfileControllerTest extends IntegrationTestBase {
     void getMyProfile_noToken() throws Exception {
         mockMvc.perform(get("/api/patients/me"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("PUT /api/patients/me: dates are read and written in ISO-8601 (yyyy-MM-dd)")
+    void updateMyProfile_isoDates() throws Exception {
+        mockMvc.perform(put("/api/patients/me")
+                        .header("Authorization", bearerToken(patientUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dateOfBirth\": \"1990-05-17\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dateOfBirth").value("1990-05-17"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/patients/me: the old dd-MM-yyyy format is rejected with 400")
+    void updateMyProfile_legacyDateFormat_badRequest() throws Exception {
+        mockMvc.perform(put("/api/patients/me")
+                        .header("Authorization", bearerToken(patientUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dateOfBirth\": \"17-05-1990\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     private User createUser(String email, String fullName, UserRole role) {
