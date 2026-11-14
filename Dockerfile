@@ -2,7 +2,7 @@ FROM eclipse-temurin:17-jdk AS builder
 WORKDIR /build
 COPY mvnw pom.xml checkstyle.xml ./
 COPY .mvn .mvn
-RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
+RUN sed -i 's/\r$//' mvnw .mvn/wrapper/maven-wrapper.properties && chmod +x mvnw
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q dependency:go-offline
 COPY src src
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q package -DskipTests \
