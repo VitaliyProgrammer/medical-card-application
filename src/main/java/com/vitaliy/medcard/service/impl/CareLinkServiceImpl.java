@@ -54,11 +54,11 @@ public class CareLinkServiceImpl implements CareLinkService {
         User doctor = userRepository.findByEmail(request.doctorEmail())
                 .filter(user -> user.getRole() == UserRole.DOCTOR)
                 .orElseThrow(() -> new UserNotFoundException(
-                        "Doctor not found with email: " + request.doctorEmail() + "!"));
+                        "Doctor not found with email: " + request.doctorEmail()));
 
         if (careLinkRepository.existsByDoctorIdAndPatientId(doctor.getId(), patient.getId())) {
             throw new CareLinkAlreadyExistsException(
-                    "This doctor already has access to your card!");
+                    "This doctor already has access to your card");
         }
 
         CareLink careLink = new CareLink();
@@ -86,7 +86,7 @@ public class CareLinkServiceImpl implements CareLinkService {
 
         CareLink careLink = careLinkRepository.findByIdAndPatientId(careLinkId, patient.getId())
                 .orElseThrow(() -> new CareLinkNotFoundException(
-                        "Care link not found: " + careLinkId + "!"));
+                        "Care link not found: " + careLinkId));
 
         careLinkRepository.delete(careLink);
     }

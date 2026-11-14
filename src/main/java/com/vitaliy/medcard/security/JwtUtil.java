@@ -49,7 +49,7 @@ public class JwtUtil {
             Claims claims = parser.parseClaimsJws(token).getBody();
             return new JwtPrincipal(claims.getSubject(), claims.get(ROLE_CLAIM, String.class));
         } catch (JwtException | IllegalArgumentException exception) {
-            throw new JwtAuthenticationException("Expired or invalid JWT token!");
+            throw new JwtAuthenticationException("Expired or invalid JWT token");
         }
     }
 

@@ -61,10 +61,10 @@ public class ConditionServiceImpl implements ConditionService {
 
         Condition condition = conditionRepository.findById(conditionId)
                 .orElseThrow(() -> new ConditionNotFoundException(
-                        "Condition not found: " + conditionId + "!"));
+                        "Condition not found: " + conditionId));
 
         if (!condition.getPatient().getUser().getId().equals(currentUser.getId())) {
-            throw new ForbiddenActionException("This condition doesn't belong to you!");
+            throw new ForbiddenActionException("This condition doesn't belong to you");
         }
 
         conditionRepository.delete(condition);

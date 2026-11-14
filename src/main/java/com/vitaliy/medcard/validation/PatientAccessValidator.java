@@ -22,7 +22,7 @@ public class PatientAccessValidator {
                 currentDoctor.getId(), patientId);
 
         if (!isAssignedDoctor) {
-            throw new ForbiddenActionException("You are not assigned to this patient's care!");
+            throw new ForbiddenActionException("You are not assigned to this patient's care");
         }
     }
 }

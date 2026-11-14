@@ -54,7 +54,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
 
         PatientProfile profile = patientProfileRepository.findById(patientId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + patientId + "!"));
+                        "Patient profile not found: " + patientId));
 
         patientAccessValidator.validateDoctorAccess(currentDoctor, patientId);
 

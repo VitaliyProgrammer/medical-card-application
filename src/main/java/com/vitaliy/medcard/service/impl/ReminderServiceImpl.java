@@ -54,10 +54,10 @@ public class ReminderServiceImpl implements ReminderService {
     public void deleteMyReminder(User currentUser, Long reminderId) {
         Reminder reminder = reminderRepository.findById(reminderId)
                 .orElseThrow(() -> new ReminderNotFoundException(
-                        "Reminder not found: " + reminderId + "!"));
+                        "Reminder not found: " + reminderId));
 
         if (!reminder.getPatient().getUser().getId().equals(currentUser.getId())) {
-            throw new ForbiddenActionException("This reminder doesn't belong to you!");
+            throw new ForbiddenActionException("This reminder doesn't belong to you");
         }
 
         reminderRepository.delete(reminder);

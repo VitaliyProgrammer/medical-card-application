@@ -130,7 +130,7 @@ class PatientProfileServiceImplTest {
 
         when(patientProfileRepository.findById(profile.getId()))
                 .thenReturn(Optional.of(profile));
-        doThrow(new ForbiddenActionException("You are not assigned to this patient's care!"))
+        doThrow(new ForbiddenActionException("You are not assigned to this patient's care"))
                 .when(patientAccessValidator).validateDoctorAccess(doctor, profile.getId());
 
         assertThrows(ForbiddenActionException.class,

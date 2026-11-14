@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class PatientProfileRequestDto {
 
-    @Past(message = "Date of birth must be in the past!")
+    @Past(message = "Date of birth must be in the past")
     private LocalDate dateOfBirth;
 
     private String bloodGroup;

@@ -40,7 +40,7 @@ public class VisitServiceImpl implements VisitService {
 
         PatientProfile patient = patientProfileRepository.findById(patientId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + patientId + "!"));
+                        "Patient profile not found: " + patientId));
 
         Visit visit = visitMapper.toEntity(request);
         visit.setPatient(patient);
