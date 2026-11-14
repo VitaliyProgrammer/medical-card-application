@@ -52,133 +52,83 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         : error.getDefaultMessage())
                 .toList();
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body(errors));
-    }
-
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Object> handleUserNotFound(UserNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(PatientProfileNotFoundException.class)
-    public ResponseEntity<Object> handlePatientProfileNotFound(
-            PatientProfileNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(AllergyNotFoundException.class)
-    public ResponseEntity<Object> handleAllergyNotFound(AllergyNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(ConditionNotFoundException.class)
-    public ResponseEntity<Object> handleConditionNotFound(ConditionNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(DocumentNotFoundException.class)
-    public ResponseEntity<Object> handleDocumentNotFound(DocumentNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
+        return respond(HttpStatus.BAD_REQUEST, errors);
     }
 
     @ExceptionHandler(UnsupportedFileTypeException.class)
-    public ResponseEntity<Object> handleUnsupportedFileType(UnsupportedFileTypeException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body(ex.getMessage()));
+    public ResponseEntity<Object> handleBadRequest(RuntimeException ex) {
+        return respond(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    @ExceptionHandler(FileStorageException.class)
-    public ResponseEntity<Object> handleFileStorage(FileStorageException ex) {
-        logger.error("File storage failure", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(ReminderNotFoundException.class)
-    public ResponseEntity<Object> handleReminderNotFound(ReminderNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(ShareLinkNotFoundException.class)
-    public ResponseEntity<Object> handleShareLinkNotFound(ShareLinkNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(ShareLinkExpiredException.class)
-    public ResponseEntity<Object> handleShareLinkExpired(ShareLinkExpiredException ex) {
-        return ResponseEntity.status(HttpStatus.GONE).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(PdfGenerationException.class)
-    public ResponseEntity<Object> handlePdfGeneration(PdfGenerationException ex) {
-        logger.error("PDF generation failure", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(RegistrationException.class)
-    public ResponseEntity<Object> handleRegistration(RegistrationException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<Object> handleInvalidCredentials(InvalidCredentialsException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    @ExceptionHandler({
+            InvalidCredentialsException.class,
+            JwtAuthenticationException.class,
+            InvalidRefreshTokenException.class,
+            InvalidPasswordResetTokenException.class
+    })
+    public ResponseEntity<Object> handleUnauthorized(RuntimeException ex) {
+        return respond(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(ForbiddenActionException.class)
-    public ResponseEntity<Object> handleForbiddenAction(ForbiddenActionException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body(ex.getMessage()));
+    public ResponseEntity<Object> handleForbidden(RuntimeException ex) {
+        return respond(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
-    @ExceptionHandler(CareLinkNotFoundException.class)
-    public ResponseEntity<Object> handleCareLinkNotFound(CareLinkNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(ex.getMessage()));
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
+        return respond(HttpStatus.FORBIDDEN, "You don't have permission to perform this action!");
     }
 
-    @ExceptionHandler(CareLinkAlreadyExistsException.class)
-    public ResponseEntity<Object> handleCareLinkAlreadyExists(CareLinkAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body(ex.getMessage()));
+    @ExceptionHandler({
+            UserNotFoundException.class,
+            PatientProfileNotFoundException.class,
+            AllergyNotFoundException.class,
+            ConditionNotFoundException.class,
+            DocumentNotFoundException.class,
+            ReminderNotFoundException.class,
+            ShareLinkNotFoundException.class,
+            CareLinkNotFoundException.class
+    })
+    public ResponseEntity<Object> handleNotFound(RuntimeException ex) {
+        return respond(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(JwtAuthenticationException.class)
-    public ResponseEntity<Object> handleJwtAuthentication(JwtAuthenticationException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(InvalidRefreshTokenException.class)
-    public ResponseEntity<Object> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
-    }
-
-    @ExceptionHandler(InvalidPasswordResetTokenException.class)
-    public ResponseEntity<Object> handleInvalidPasswordResetToken(
-            InvalidPasswordResetTokenException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body(ex.getMessage()));
+    @ExceptionHandler({RegistrationException.class, CareLinkAlreadyExistsException.class})
+    public ResponseEntity<Object> handleConflict(RuntimeException ex) {
+        return respond(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Object> handleDataIntegrityViolation(
             DataIntegrityViolationException ex) {
         logger.warn("Rejected a write that violates a database constraint", ex);
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(body("This record conflicts with existing data!"));
+        return respond(HttpStatus.CONFLICT, "This record conflicts with existing data!");
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(body("You don't have permission to perform this action!"));
+    @ExceptionHandler(ShareLinkExpiredException.class)
+    public ResponseEntity<Object> handleGone(RuntimeException ex) {
+        return respond(HttpStatus.GONE, ex.getMessage());
+    }
+
+    @ExceptionHandler({FileStorageException.class, PdfGenerationException.class})
+    public ResponseEntity<Object> handleInfrastructureFailure(RuntimeException ex) {
+        logger.error("Infrastructure failure", ex);
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR,
+                "The file service is temporarily unavailable. Please try again later!");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpected(Exception ex) {
         logger.error("Unhandled exception", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(body("Something went wrong. Please try again later!"));
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Something went wrong. Please try again later!");
     }
 
-    private Map<String, Object> body(Object errorDetails) {
+    private ResponseEntity<Object> respond(HttpStatus status, Object errorDetails) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now());
         body.put("error", errorDetails);
-        return body;
+        return ResponseEntity.status(status).body(body);
     }
 }
