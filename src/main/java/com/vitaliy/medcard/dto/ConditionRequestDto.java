@@ -9,9 +9,9 @@ import java.time.LocalDate;
 public record ConditionRequestDto(
         @NotBlank
         String name,
-        @NotNull(message = "Status must be ACTIVE or RESOLVED!")
+        @NotNull(message = "Status must be ACTIVE or RESOLVED")
         ConditionStatus status,
-        @PastOrPresent(message = "Diagnosed date can't be in the future!")
+        @PastOrPresent(message = "Diagnosed date can't be in the future")
         LocalDate diagnosedAt
 ) {
 }

@@ -1,0 +1,11 @@
+.git
+.github
+.idea
+.claude
+*.iml
+target
+uploads
+docs
+.env
+*.png
+*.log

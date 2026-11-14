@@ -9,9 +9,9 @@ import java.time.LocalDate;
 public record AllergyRequestDto(
         @NotBlank
         String name,
-        @NotNull(message = "Severity must be MILD, MODERATE or SEVERE!")
+        @NotNull(message = "Severity must be MILD, MODERATE or SEVERE")
         AllergySeverity severity,
-        @PastOrPresent(message = "Diagnosed date can't be in the future!")
+        @PastOrPresent(message = "Diagnosed date can't be in the future")
         LocalDate diagnosedAt
 ) {
 }

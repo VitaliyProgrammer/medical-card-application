@@ -18,7 +18,6 @@ import com.vitaliy.medcard.model.status.AllergySeverity;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.repository.AllergyRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +36,7 @@ class AllergyServiceImplTest {
     private AllergyRepository allergyRepository;
 
     @Mock
-    private PatientProfileRepository patientProfileRepository;
+    private PatientProfileLookup patientProfileLookup;
 
     @Mock
     private AllergyMapper allergyMapper;
@@ -78,8 +77,8 @@ class AllergyServiceImplTest {
         AllergyResponseDto responseDto =
                 new AllergyResponseDto(100L, "Penicillin", AllergySeverity.SEVERE, null, null);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(allergyMapper.toEntity(request)).thenReturn(allergy);
         when(allergyRepository.save(allergy)).thenReturn(allergy);
         when(allergyMapper.toDto(allergy)).thenReturn(responseDto);

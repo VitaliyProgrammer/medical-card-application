@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,13 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractToken(request);
 
-            if (token != null && jwtUtil.isValidToken(token)) {
-                String email = jwtUtil.getEmailFromToken(token);
-                String role = jwtUtil.getRoleFromToken(token);
+            if (token != null) {
+                JwtUtil.JwtPrincipal principal = jwtUtil.parseToken(token);
 
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-                var authentication =
-                        new UsernamePasswordAuthenticationToken(email, null, authorities);
+                var authorities =
+                        List.of(new SimpleGrantedAuthority("ROLE_" + principal.role()));
+                var authentication = new UsernamePasswordAuthenticationToken(
+                        principal.email(), null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
@@ -47,17 +48,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (JwtAuthenticationException exception) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Token expired or invalid!\"}");
+            response.getWriter().write("{\"error\": \"Token expired or invalid\"}");
         }
     }
 
     private String extractToken(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (header == null || !StringUtils.startsWithIgnoreCase(header.trim(), "Bearer")) {
+        if (header == null || !StringUtils.startsWithIgnoreCase(header.trim(), BEARER_PREFIX)) {
             return null;
         }
 
-        return header.trim().substring(BEARER_PREFIX.length()).trim();
+        String token = header.trim().substring(BEARER_PREFIX.length()).trim();
+        return token.isEmpty() ? null : token;
     }
 }

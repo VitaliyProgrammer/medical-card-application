@@ -5,13 +5,11 @@ import com.vitaliy.medcard.dto.ConditionRequestDto;
 import com.vitaliy.medcard.dto.ConditionResponseDto;
 import com.vitaliy.medcard.exception.ConditionNotFoundException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
-import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.mapper.ConditionMapper;
 import com.vitaliy.medcard.model.Condition;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.repository.ConditionRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.service.ConditionService;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.time.LocalDateTime;
@@ -27,7 +25,7 @@ public class ConditionServiceImpl implements ConditionService {
 
     private final ConditionRepository conditionRepository;
 
-    private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
 
     private final ConditionMapper conditionMapper;
 
@@ -37,7 +35,7 @@ public class ConditionServiceImpl implements ConditionService {
     @Transactional(readOnly = true)
     public List<ConditionResponseDto> getMyConditions(User currentUser) {
 
-        PatientProfile patient = findPatientByUserId(currentUser.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         return conditionRepository.findByPatientId(patient.getId()).stream()
                 .map(conditionMapper::toDto)
@@ -48,7 +46,7 @@ public class ConditionServiceImpl implements ConditionService {
     @Audited(action = "ADD_CONDITION")
     public ConditionResponseDto addCondition(User currentUser, ConditionRequestDto request) {
 
-        PatientProfile patient = findPatientByUserId(currentUser.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         Condition condition = conditionMapper.toEntity(request);
         condition.setPatient(patient);
@@ -63,10 +61,10 @@ public class ConditionServiceImpl implements ConditionService {
 
         Condition condition = conditionRepository.findById(conditionId)
                 .orElseThrow(() -> new ConditionNotFoundException(
-                        "Condition not found: " + conditionId + "!"));
+                        "Condition not found: " + conditionId));
 
         if (!condition.getPatient().getUser().getId().equals(currentUser.getId())) {
-            throw new ForbiddenActionException("This condition doesn't belong to you!");
+            throw new ForbiddenActionException("This condition doesn't belong to you");
         }
 
         conditionRepository.delete(condition);
@@ -81,11 +79,5 @@ public class ConditionServiceImpl implements ConditionService {
         return conditionRepository.findByPatientId(patientId).stream()
                 .map(conditionMapper::toDto)
                 .toList();
-    }
-
-    private PatientProfile findPatientByUserId(Long userId) {
-        return patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + userId + "!"));
     }
 }

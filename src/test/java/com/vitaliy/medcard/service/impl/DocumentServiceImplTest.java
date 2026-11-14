@@ -19,11 +19,11 @@ import com.vitaliy.medcard.model.status.DocumentType;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.repository.DocumentRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.service.FileStorageService;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,15 +33,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceImplTest {
+
+    private static final byte[] PDF_CONTENT = "%PDF-1.7 test content".getBytes();
 
     @Mock
     private DocumentRepository documentRepository;
 
     @Mock
-    private PatientProfileRepository patientProfileRepository;
+    private PatientProfileLookup patientProfileLookup;
 
     @Mock
     private FileStorageService fileStorageService;
@@ -76,19 +80,26 @@ class DocumentServiceImplTest {
         document.setOriginalFileName("blood-test.pdf");
         document.setStoredFileName("uuid_blood-test.pdf");
         document.setContentType("application/pdf");
+
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void tearDown() {
+        TransactionSynchronizationManager.clearSynchronization();
     }
 
     @Test
     @DisplayName("uploadMyDocument: stores the file and saves its metadata")
     void uploadMyDocument_success() {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "blood-test.pdf", "application/pdf", "content".getBytes());
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
         DocumentResponseDto responseDto = new DocumentResponseDto(
                 100L, DocumentType.LAB_RESULT, "blood-test.pdf", "application/pdf", 7L,
                 "Jane Patient", null);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
         when(documentRepository.save(any(Document.class))).thenReturn(document);
         when(documentMapper.toDto(document)).thenReturn(responseDto);
@@ -106,8 +117,8 @@ class DocumentServiceImplTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "virus.exe", "application/x-msdownload", "content".getBytes());
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
 
         assertThrows(UnsupportedFileTypeException.class,
                 () -> documentService.uploadMyDocument(patientUser, file, DocumentType.OTHER));
@@ -121,22 +132,90 @@ class DocumentServiceImplTest {
         MockMultipartFile emptyFile = new MockMultipartFile(
                 "file", "empty.pdf", "application/pdf", new byte[0]);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
 
         assertThrows(UnsupportedFileTypeException.class,
                 () -> documentService.uploadMyDocument(patientUser, emptyFile, DocumentType.OTHER));
     }
 
     @Test
-    @DisplayName("deleteMyDocument: deletes the stored file and the database row")
+    @DisplayName("uploadMyDocument: rejects a file whose content doesn't match its declared type")
+    void uploadMyDocument_spoofedContentType() {
+        MockMultipartFile spoofed = new MockMultipartFile(
+                "file", "report.pdf", "application/pdf", "MZ executable bytes".getBytes());
+
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
+
+        assertThrows(UnsupportedFileTypeException.class,
+                () -> documentService.uploadMyDocument(patientUser, spoofed, DocumentType.OTHER));
+
+        verify(fileStorageService, never()).store(any());
+    }
+
+    @Test
+    @DisplayName("deleteMyDocument: deletes the row now and the stored file only after commit")
     void deleteMyDocument_success() {
         when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
 
         documentService.deleteMyDocument(patientUser, document.getId());
 
-        verify(fileStorageService).delete(document.getStoredFileName());
         verify(documentRepository).delete(document);
+        verify(fileStorageService, never()).delete(any());
+
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+
+        verify(fileStorageService).delete(document.getStoredFileName());
+    }
+
+    @Test
+    @DisplayName("deleteMyDocument: keeps the stored file when the transaction rolls back")
+    void deleteMyDocument_rollback_keepsFile() {
+        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+
+        documentService.deleteMyDocument(patientUser, document.getId());
+        TransactionSynchronizationManager.getSynchronizations().forEach(sync ->
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("uploadMyDocument: removes the stored file when the transaction rolls back")
+    void uploadMyDocument_rollback_removesOrphanFile() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
+
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
+        when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+
+        documentService.uploadMyDocument(patientUser, file, DocumentType.LAB_RESULT);
+        TransactionSynchronizationManager.getSynchronizations().forEach(sync ->
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+        verify(fileStorageService).delete("uuid_blood-test.pdf");
+    }
+
+    @Test
+    @DisplayName("uploadMyDocument: keeps the stored file when the transaction commits")
+    void uploadMyDocument_commit_keepsFile() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
+
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
+        when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+
+        documentService.uploadMyDocument(patientUser, file, DocumentType.LAB_RESULT);
+        TransactionSynchronizationManager.getSynchronizations().forEach(sync ->
+                sync.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+
+        verify(fileStorageService, never()).delete(any());
     }
 
     @Test
@@ -194,5 +273,41 @@ class DocumentServiceImplTest {
                 documentService.getDocumentsForDoctor(doctor, patient.getId(), null);
 
         assertThat(result).containsExactly(responseDto);
+    }
+
+    @Test
+    @DisplayName("downloadDocumentForDoctor: returns the file when it belongs to the patient")
+    void downloadDocumentForDoctor_success() {
+        User doctor = new User();
+        doctor.setId(5L);
+        Resource resource = org.mockito.Mockito.mock(Resource.class);
+
+        doNothing().when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
+        when(documentRepository.findByIdAndPatientId(document.getId(), patient.getId()))
+                .thenReturn(Optional.of(document));
+        when(fileStorageService.load(document.getStoredFileName())).thenReturn(resource);
+
+        DocumentFileDto result = documentService.downloadDocumentForDoctor(
+                doctor, patient.getId(), document.getId());
+
+        assertThat(result.resource()).isEqualTo(resource);
+    }
+
+    @Test
+    @DisplayName("downloadDocumentForDoctor: a document of another patient is not found")
+    void downloadDocumentForDoctor_documentOfAnotherPatient() {
+        User doctor = new User();
+        doctor.setId(5L);
+        Long assignedPatientId = 20L;
+
+        doNothing().when(patientAccessValidator).validateDoctorAccess(doctor, assignedPatientId);
+        when(documentRepository.findByIdAndPatientId(document.getId(), assignedPatientId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(DocumentNotFoundException.class,
+                () -> documentService.downloadDocumentForDoctor(
+                        doctor, assignedPatientId, document.getId()));
+
+        verify(fileStorageService, never()).load(any());
     }
 }

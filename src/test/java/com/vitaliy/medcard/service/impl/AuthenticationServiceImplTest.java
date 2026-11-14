@@ -23,11 +23,13 @@ import com.vitaliy.medcard.model.PasswordResetToken;
 import com.vitaliy.medcard.model.RefreshToken;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.notification.PasswordResetRequestedEvent;
 import com.vitaliy.medcard.repository.PasswordResetTokenRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.RefreshTokenRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.security.JwtUtil;
+import com.vitaliy.medcard.util.TokenHasher;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -35,10 +37,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +48,6 @@ class AuthenticationServiceImplTest {
 
     private static final long REFRESH_TOKEN_EXPIRATION_MS = 2_592_000_000L;
     private static final long PASSWORD_RESET_EXPIRATION_MS = 900_000L;
-    private static final String MAIL_FROM = "no-reply@medicalcard.local";
 
     @Mock
     private UserRepository userRepository;
@@ -70,7 +71,7 @@ class AuthenticationServiceImplTest {
     private JwtUtil jwtUtil;
 
     @Mock
-    private JavaMailSender mailSender;
+    private ApplicationEventPublisher eventPublisher;
 
     private AuthenticationServiceImpl authenticationService;
 
@@ -80,8 +81,8 @@ class AuthenticationServiceImplTest {
     void setUp() {
         authenticationService = new AuthenticationServiceImpl(
                 userRepository, patientProfileRepository, refreshTokenRepository,
-                passwordResetTokenRepository, userMapper, passwordEncoder, jwtUtil, mailSender,
-                REFRESH_TOKEN_EXPIRATION_MS, PASSWORD_RESET_EXPIRATION_MS, MAIL_FROM);
+                passwordResetTokenRepository, userMapper, passwordEncoder, jwtUtil, eventPublisher,
+                REFRESH_TOKEN_EXPIRATION_MS, PASSWORD_RESET_EXPIRATION_MS);
 
         patientRequest = new UserRegistrationRequestDto();
         patientRequest.setEmail("patient@test.com");
@@ -164,7 +165,12 @@ class AuthenticationServiceImplTest {
 
         assertThat(result.token()).isEqualTo("jwt-token");
         assertThat(result.refreshToken()).isNotBlank();
-        verify(refreshTokenRepository).save(any(RefreshToken.class));
+
+        ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(captor.capture());
+        assertThat(captor.getValue().getTokenHash())
+                .isNotEqualTo(result.refreshToken())
+                .isEqualTo(TokenHasher.sha256Hex(result.refreshToken()));
     }
 
     @Test
@@ -202,12 +208,12 @@ class AuthenticationServiceImplTest {
         user.setRole(UserRole.PATIENT);
 
         RefreshToken storedToken = new RefreshToken();
-        storedToken.setToken("old-refresh-token");
+        storedToken.setTokenHash(TokenHasher.sha256Hex("old-refresh-token"));
         storedToken.setUser(user);
         storedToken.setExpiresAt(LocalDateTime.now().plusDays(1));
         storedToken.setRevoked(false);
 
-        when(refreshTokenRepository.findByToken("old-refresh-token"))
+        when(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex("old-refresh-token")))
                 .thenReturn(Optional.of(storedToken));
         when(jwtUtil.generateToken(user.getEmail(), user.getRole().name()))
                 .thenReturn("new-jwt-token");
@@ -223,7 +229,8 @@ class AuthenticationServiceImplTest {
     @Test
     @DisplayName("refresh: rejects an unknown token")
     void refresh_unknownToken_isRejected() {
-        when(refreshTokenRepository.findByToken("nonexistent")).thenReturn(Optional.empty());
+        when(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex("nonexistent")))
+                .thenReturn(Optional.empty());
 
         assertThrows(InvalidRefreshTokenException.class,
                 () -> authenticationService.refresh(new RefreshTokenRequestDto("nonexistent")));
@@ -233,12 +240,12 @@ class AuthenticationServiceImplTest {
     @DisplayName("refresh: rejects an expired token")
     void refresh_expiredToken_isRejected() {
         RefreshToken storedToken = new RefreshToken();
-        storedToken.setToken("expired-token");
+        storedToken.setTokenHash(TokenHasher.sha256Hex("expired-token"));
         storedToken.setUser(new User());
         storedToken.setExpiresAt(LocalDateTime.now().minusDays(1));
         storedToken.setRevoked(false);
 
-        when(refreshTokenRepository.findByToken("expired-token"))
+        when(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex("expired-token")))
                 .thenReturn(Optional.of(storedToken));
 
         assertThrows(InvalidRefreshTokenException.class,
@@ -249,12 +256,12 @@ class AuthenticationServiceImplTest {
     @DisplayName("refresh: rejects an already-revoked token")
     void refresh_revokedToken_isRejected() {
         RefreshToken storedToken = new RefreshToken();
-        storedToken.setToken("revoked-token");
+        storedToken.setTokenHash(TokenHasher.sha256Hex("revoked-token"));
         storedToken.setUser(new User());
         storedToken.setExpiresAt(LocalDateTime.now().plusDays(1));
         storedToken.setRevoked(true);
 
-        when(refreshTokenRepository.findByToken("revoked-token"))
+        when(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex("revoked-token")))
                 .thenReturn(Optional.of(storedToken));
 
         assertThrows(InvalidRefreshTokenException.class,
@@ -265,10 +272,11 @@ class AuthenticationServiceImplTest {
     @DisplayName("logout: revokes an existing refresh token")
     void logout_revokesToken() {
         RefreshToken storedToken = new RefreshToken();
-        storedToken.setToken("some-token");
+        storedToken.setTokenHash(TokenHasher.sha256Hex("some-token"));
         storedToken.setRevoked(false);
 
-        when(refreshTokenRepository.findByToken("some-token")).thenReturn(Optional.of(storedToken));
+        when(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex("some-token")))
+                .thenReturn(Optional.of(storedToken));
 
         authenticationService.logout(new RefreshTokenRequestDto("some-token"));
 
@@ -278,7 +286,8 @@ class AuthenticationServiceImplTest {
     @Test
     @DisplayName("logout: is a no-op for an unknown token")
     void logout_unknownToken_isNoOp() {
-        when(refreshTokenRepository.findByToken("nonexistent")).thenReturn(Optional.empty());
+        when(refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex("nonexistent")))
+                .thenReturn(Optional.empty());
 
         authenticationService.logout(new RefreshTokenRequestDto("nonexistent"));
 
@@ -286,8 +295,8 @@ class AuthenticationServiceImplTest {
     }
 
     @Test
-    @DisplayName("forgotPassword: emails a reset token when the address is known")
-    void forgotPassword_knownEmail_sendsEmail() {
+    @DisplayName("forgotPassword: stores the token hash and publishes the raw token for mailing")
+    void forgotPassword_knownEmail_publishesEvent() {
         User user = new User();
         user.setEmail("patient@test.com");
 
@@ -295,8 +304,20 @@ class AuthenticationServiceImplTest {
 
         authenticationService.forgotPassword(new ForgotPasswordRequestDto("patient@test.com"));
 
-        verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        ArgumentCaptor<PasswordResetToken> tokenCaptor =
+                ArgumentCaptor.forClass(PasswordResetToken.class);
+        ArgumentCaptor<PasswordResetRequestedEvent> eventCaptor =
+                ArgumentCaptor.forClass(PasswordResetRequestedEvent.class);
+        verify(passwordResetTokenRepository).save(tokenCaptor.capture());
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+        PasswordResetRequestedEvent event = eventCaptor.getValue();
+        assertThat(event.email()).isEqualTo("patient@test.com");
+        assertThat(event.expiresInMinutes())
+                .isEqualTo(PASSWORD_RESET_EXPIRATION_MS / 60_000);
+        assertThat(tokenCaptor.getValue().getTokenHash())
+                .isNotEqualTo(event.rawToken())
+                .isEqualTo(TokenHasher.sha256Hex(event.rawToken()));
     }
 
     @Test
@@ -307,7 +328,7 @@ class AuthenticationServiceImplTest {
         authenticationService.forgotPassword(new ForgotPasswordRequestDto("nobody@test.com"));
 
         verify(passwordResetTokenRepository, never()).save(any());
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -317,7 +338,7 @@ class AuthenticationServiceImplTest {
         user.setEmail("patient@test.com");
 
         PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken("valid-reset-token");
+        resetToken.setTokenHash(TokenHasher.sha256Hex("valid-reset-token"));
         resetToken.setUser(user);
         resetToken.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         resetToken.setUsed(false);
@@ -325,7 +346,8 @@ class AuthenticationServiceImplTest {
         RefreshToken activeSession = new RefreshToken();
         activeSession.setRevoked(false);
 
-        when(passwordResetTokenRepository.findByToken("valid-reset-token"))
+        when(passwordResetTokenRepository
+                .findByTokenHash(TokenHasher.sha256Hex("valid-reset-token")))
                 .thenReturn(Optional.of(resetToken));
         when(passwordEncoder.encode("NewPass123!")).thenReturn("hashed-new-pass");
         when(refreshTokenRepository.findAllByUserAndRevokedFalse(user))
@@ -342,7 +364,8 @@ class AuthenticationServiceImplTest {
     @Test
     @DisplayName("resetPassword: rejects an unknown token")
     void resetPassword_unknownToken_isRejected() {
-        when(passwordResetTokenRepository.findByToken("nonexistent")).thenReturn(Optional.empty());
+        when(passwordResetTokenRepository.findByTokenHash(TokenHasher.sha256Hex("nonexistent")))
+                .thenReturn(Optional.empty());
 
         assertThrows(InvalidPasswordResetTokenException.class, () -> authenticationService
                 .resetPassword(new ResetPasswordRequestDto("nonexistent", "NewPass123!", "NewPass123!")));
@@ -352,12 +375,12 @@ class AuthenticationServiceImplTest {
     @DisplayName("resetPassword: rejects an expired token")
     void resetPassword_expiredToken_isRejected() {
         PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken("expired-token");
+        resetToken.setTokenHash(TokenHasher.sha256Hex("expired-token"));
         resetToken.setUser(new User());
         resetToken.setExpiresAt(LocalDateTime.now().minusMinutes(1));
         resetToken.setUsed(false);
 
-        when(passwordResetTokenRepository.findByToken("expired-token"))
+        when(passwordResetTokenRepository.findByTokenHash(TokenHasher.sha256Hex("expired-token")))
                 .thenReturn(Optional.of(resetToken));
 
         assertThrows(InvalidPasswordResetTokenException.class, () -> authenticationService
@@ -368,12 +391,12 @@ class AuthenticationServiceImplTest {
     @DisplayName("resetPassword: rejects an already-used token")
     void resetPassword_usedToken_isRejected() {
         PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken("used-token");
+        resetToken.setTokenHash(TokenHasher.sha256Hex("used-token"));
         resetToken.setUser(new User());
         resetToken.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         resetToken.setUsed(true);
 
-        when(passwordResetTokenRepository.findByToken("used-token"))
+        when(passwordResetTokenRepository.findByTokenHash(TokenHasher.sha256Hex("used-token")))
                 .thenReturn(Optional.of(resetToken));
 
         assertThrows(InvalidPasswordResetTokenException.class, () -> authenticationService

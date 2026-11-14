@@ -26,6 +26,7 @@ public class VisitServiceImpl implements VisitService {
     private final VisitRepository visitRepository;
 
     private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
 
     private final VisitMapper visitMapper;
 
@@ -39,7 +40,7 @@ public class VisitServiceImpl implements VisitService {
 
         PatientProfile patient = patientProfileRepository.findById(patientId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + patientId + "!"));
+                        "Patient profile not found: " + patientId));
 
         Visit visit = visitMapper.toEntity(request);
         visit.setPatient(patient);
@@ -64,9 +65,7 @@ public class VisitServiceImpl implements VisitService {
     @Transactional(readOnly = true)
     public List<VisitResponseDto> getMyVisits(User currentUser) {
 
-        PatientProfile patient = patientProfileRepository.findByUserId(currentUser.getId())
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + currentUser.getId() + "!"));
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         return visitRepository.findByPatientIdOrderByVisitDateDesc(patient.getId()).stream()
                 .map(visitMapper::toDto)

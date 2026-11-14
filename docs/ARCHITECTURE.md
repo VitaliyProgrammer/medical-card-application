@@ -1,7 +1,8 @@
 # Medical Card (Pulse) — Technical Architecture
 
 Portfolio backend for a personal health record (PHR) service. A patient owns and
-edits their own medical card; an assigned doctor (linked via `CareLink`) can view
+edits their own medical card and decides which doctors may see it; a doctor the
+patient granted access to (a `CareLink`, created and revoked only by the patient) can view
 and add clinical data to it. Built with Java 17, Spring Boot 3.2, MySQL 8, JWT
 auth, Liquibase, MapStruct, and a small custom AOP audit layer.
 
@@ -17,7 +18,7 @@ exactly where it should.
 |-------------------|--------------------------------------------------|
 | Language / runtime | Java 17, Spring Boot 3.2.4                       |
 | Web                | Spring MVC (REST), springdoc-openapi (Swagger)   |
-| Security           | Spring Security, JWT (jjwt, 15-min access token) + DB-backed rotating refresh token, method-level `@PreAuthorize`, per-IP rate limiting on auth |
+| Security           | Spring Security, JWT (jjwt, 15-min access token) + DB-backed rotating refresh token, method-level `@PreAuthorize`, per-IP rate limiting on auth (Redis-backed, shared across instances) |
 | Persistence        | Spring Data JPA / Hibernate, MySQL 8, indexed hot-path queries |
 | Migrations         | Liquibase (YAML changesets)                      |
 | Mapping            | MapStruct                                        |
@@ -78,14 +79,14 @@ who triggered it is deleted.
 |---------------------------------|--------------------------------------|-------|
 | `AuthenticationController`      | `/api/auth`                          | public; `/login` issues an access + refresh token, `/refresh` rotates it, `/logout` revokes it |
 | `PatientProfileController`      | `/api/patients`                      | `/me` = patient, `/{id}` = doctor/admin |
-| `CareLinkController`            | `/api/care-links`                    | includes `/my-patients` search+paging |
+| `CareLinkController`            | `/api/patients/me/care-links`,<br>`/api/care-links/my-patients` | patient grants/lists/revokes doctor access; doctor searches+pages their patients |
 | `AllergyController`             | `/api/patients/me\|{id}/allergies`   | |
 | `ConditionController`           | `/api/patients/me\|{id}/conditions`  | |
 | `VisitController`               | `/api/patients/me\|{id}/visits`      | append-only |
 | `DocumentController`            | `/api/patients/me\|{id}/documents`   | multipart upload, download |
 | `ReminderController`            | `/api/patients/me/reminders`         | patient-only |
 | `PatientCardExportController`   | `/api/patients/me\|{id}/export`      | PDF |
-| `ShareLinkController`           | `/api/patients/{id}/share-links`,<br>`/api/share-links/{token}/export` | second path is PUBLIC |
+| `ShareLinkController`           | `/api/patients/{id}/share-links`,<br>`/api/share-links/{id}` (DELETE),<br>`/api/share-links/{token}/export` | export is PUBLIC; token stored hashed, revocable by its creator, every export audited |
 | `AuditEntryController`          | `/api/audit-entries`                 | ADMIN only |
 
 Full request/response contracts are in Swagger UI at `/swagger-ui.html`.

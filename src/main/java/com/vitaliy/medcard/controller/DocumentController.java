@@ -8,9 +8,11 @@ import com.vitaliy.medcard.security.CurrentUserService;
 import com.vitaliy.medcard.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -103,8 +105,10 @@ public class DocumentController {
     private ResponseEntity<Resource> buildDownloadResponse(DocumentFileDto fileDto) {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(fileDto.contentType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileDto.fileName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(fileDto.fileName(), StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
                 .body(fileDto.resource());
     }
 }

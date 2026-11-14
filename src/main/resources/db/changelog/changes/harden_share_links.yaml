@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: harden-share-links
+      author: vitaliy
+      comment: >-
+        Share link tokens are now stored as SHA-256 hashes and links can be
+        revoked. Existing rows hold plain-text tokens that can never match a
+        hash, so they are removed (links live for 48 hours at most anyway).
+      changes:
+        - delete:
+            tableName: share_links
+        - renameColumn:
+            tableName: share_links
+            oldColumnName: token
+            newColumnName: token_hash
+            columnDataType: VARCHAR(64)
+        - addNotNullConstraint:
+            tableName: share_links
+            columnName: token_hash
+            columnDataType: VARCHAR(64)
+        - addColumn:
+            tableName: share_links
+            columns:
+              - column:
+                  name: revoked_at
+                  type: DATETIME

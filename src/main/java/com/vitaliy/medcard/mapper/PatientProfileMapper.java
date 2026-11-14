@@ -17,5 +17,9 @@ public interface PatientProfileMapper {
             expression = "java(AgeCalculator.calculateAge(patientProfile.getDateOfBirth()))")
     PatientProfileResponseDto toDto(PatientProfile patientProfile);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     void updateFromDto(PatientProfileRequestDto dto, @MappingTarget PatientProfile entity);
 }

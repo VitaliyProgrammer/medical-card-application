@@ -68,7 +68,7 @@ public class PdfExportServiceImpl implements PdfExportService {
 
             return outputStream.toByteArray();
         } catch (IOException e) {
-            throw new PdfGenerationException("Failed to generate the patient card PDF!");
+            throw new PdfGenerationException("Failed to generate the patient card PDF");
         }
     }
 
@@ -77,7 +77,7 @@ public class PdfExportServiceImpl implements PdfExportService {
         try (var logoStream = logo.getInputStream()) {
             return Base64.getEncoder().encodeToString(logoStream.readAllBytes());
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load the patient card logo!", e);
+            throw new UncheckedIOException("Failed to load the patient card logo", e);
         }
     }
 }

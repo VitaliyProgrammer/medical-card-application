@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PatientProfileServiceImpl implements PatientProfileService {
 
     private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
 
     private final PatientProfileMapper patientProfileMapper;
 
@@ -30,7 +31,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
     @Transactional(readOnly = true)
     public PatientProfileResponseDto getMyProfile(User currentUser) {
 
-        PatientProfile profile = findByUserId(currentUser.getId());
+        PatientProfile profile = patientProfileLookup.getByUserId(currentUser.getId());
         return patientProfileMapper.toDto(profile);
     }
 
@@ -39,7 +40,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
     public PatientProfileResponseDto updateMyProfile(
             User currentUser, PatientProfileRequestDto request) {
 
-        PatientProfile profile = findByUserId(currentUser.getId());
+        PatientProfile profile = patientProfileLookup.getByUserId(currentUser.getId());
 
         patientProfileMapper.updateFromDto(request, profile);
         profile.setUpdatedAt(LocalDateTime.now());
@@ -53,17 +54,10 @@ public class PatientProfileServiceImpl implements PatientProfileService {
 
         PatientProfile profile = patientProfileRepository.findById(patientId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + patientId + "!"));
+                        "Patient profile not found: " + patientId));
 
         patientAccessValidator.validateDoctorAccess(currentDoctor, patientId);
 
         return patientProfileMapper.toDto(profile);
-    }
-
-    private PatientProfile findByUserId(Long userId) {
-
-        return patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + userId + "!"));
     }
 }

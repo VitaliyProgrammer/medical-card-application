@@ -18,18 +18,19 @@ import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.RefreshToken;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
+import com.vitaliy.medcard.notification.PasswordResetRequestedEvent;
 import com.vitaliy.medcard.repository.PasswordResetTokenRepository;
 import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.RefreshTokenRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.security.JwtUtil;
 import com.vitaliy.medcard.service.AuthenticationService;
+import com.vitaliy.medcard.util.TokenHasher;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,10 +45,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final JavaMailSender mailSender;
+    private final ApplicationEventPublisher eventPublisher;
     private final long refreshTokenExpirationMs;
     private final long passwordResetExpirationMs;
-    private final String mailFrom;
 
     public AuthenticationServiceImpl(
             UserRepository userRepository,
@@ -57,10 +57,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             UserMapper userMapper,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            JavaMailSender mailSender,
+            ApplicationEventPublisher eventPublisher,
             @Value("${jwt.refresh-expiration}") long refreshTokenExpirationMs,
-            @Value("${app.password-reset.expiration}") long passwordResetExpirationMs,
-            @Value("${app.mail.from}") String mailFrom) {
+            @Value("${app.password-reset.expiration}") long passwordResetExpirationMs) {
         this.userRepository = userRepository;
         this.patientProfileRepository = patientProfileRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -68,10 +67,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.mailSender = mailSender;
+        this.eventPublisher = eventPublisher;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
         this.passwordResetExpirationMs = passwordResetExpirationMs;
-        this.mailFrom = mailFrom;
     }
 
     @Override
@@ -80,12 +78,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public UserRegistrationResponseDto register(UserRegistrationRequestDto request) {
 
         if (request.getRole() == UserRole.ADMIN) {
-            throw new RegistrationException("Self-registration as ADMIN is not allowed!");
+            throw new RegistrationException("Self-registration as ADMIN is not allowed");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RegistrationException(
-                    "User with email " + request.getEmail() + " already exists!");
+                    "User with email " + request.getEmail() + " already exists");
         }
 
         User user = new User();
@@ -112,10 +110,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public UserLoginResponseDto login(UserLoginRequestDto request) {
 
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password!"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new InvalidCredentialsException("Invalid email or password!");
+            throw new InvalidCredentialsException("Invalid email or password");
         }
 
         return issueTokenPair(user);
@@ -125,11 +123,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Transactional
     public UserLoginResponseDto refresh(RefreshTokenRequestDto request) {
 
-        RefreshToken storedToken = refreshTokenRepository.findByToken(request.refreshToken())
-                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid!"));
+        RefreshToken storedToken = refreshTokenRepository
+                .findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid"));
 
         if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new InvalidRefreshTokenException("Refresh token is expired or revoked!");
+            throw new InvalidRefreshTokenException("Refresh token is expired or revoked");
         }
 
         storedToken.setRevoked(true);
@@ -140,7 +139,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void logout(RefreshTokenRequestDto request) {
-        refreshTokenRepository.findByToken(request.refreshToken())
+        refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
                 .ifPresent(token -> token.setRevoked(true));
     }
 
@@ -153,13 +152,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequestDto request) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+        PasswordResetToken resetToken = passwordResetTokenRepository
+                .findByTokenHash(TokenHasher.sha256Hex(request.token()))
                 .orElseThrow(() ->
-                        new InvalidPasswordResetTokenException("Password reset token is invalid!"));
+                        new InvalidPasswordResetTokenException("Password reset token is invalid"));
 
         if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new InvalidPasswordResetTokenException(
-                    "Password reset token is expired or already used!");
+                    "Password reset token is expired or already used");
         }
 
         User user = resetToken.getUser();
@@ -171,8 +171,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private void issuePasswordResetToken(User user) {
+        String rawToken = UUID.randomUUID().toString();
+
         PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken(UUID.randomUUID().toString());
+        resetToken.setTokenHash(TokenHasher.sha256Hex(rawToken));
         resetToken.setUser(user);
         resetToken.setExpiresAt(
                 LocalDateTime.now().plus(Duration.ofMillis(passwordResetExpirationMs)));
@@ -180,20 +182,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         resetToken.setCreatedAt(LocalDateTime.now());
         passwordResetTokenRepository.save(resetToken);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(user.getEmail());
-        message.setSubject("Reset your Medical Card password");
-        message.setText("Use this code to reset your password: " + resetToken.getToken()
-                + "\n\nThis code expires in "
-                + Duration.ofMillis(passwordResetExpirationMs).toMinutes()
-                + " minutes. If you didn't request this, ignore this email.");
-        mailSender.send(message);
+        eventPublisher.publishEvent(new PasswordResetRequestedEvent(
+                user.getEmail(), rawToken,
+                Duration.ofMillis(passwordResetExpirationMs).toMinutes()));
     }
 
     private UserLoginResponseDto issueTokenPair(User user) {
+        String rawRefreshToken = UUID.randomUUID().toString();
+
         RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setTokenHash(TokenHasher.sha256Hex(rawRefreshToken));
         refreshToken.setUser(user);
         refreshToken.setExpiresAt(
                 LocalDateTime.now().plus(Duration.ofMillis(refreshTokenExpirationMs)));
@@ -202,6 +200,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         refreshTokenRepository.save(refreshToken);
 
         String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new UserLoginResponseDto(accessToken, refreshToken.getToken());
+        return new UserLoginResponseDto(accessToken, rawRefreshToken);
     }
 }

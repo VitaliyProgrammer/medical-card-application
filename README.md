@@ -115,6 +115,8 @@ testing.
 - Thymeleaf template rendered to PDF via openhtmltopdf
 - A doctor can generate a 48-hour public, tokenized link that reuses the
   exact same export pipeline — no separate rendering code path
+- The token is stored only as a SHA-256 hash, every public download is
+  audited, and the doctor can revoke the link before it expires
 
 🔍 **Filtering and searching**
 - Powered by the **Specification** pattern for a doctor's paginated,
@@ -156,7 +158,7 @@ it maintainable:
   rate limiting
 - **Exception Handling** — one centralized `@RestControllerAdvice` with a
   handler per custom exception
-- **Testing Layer** — Mockito for services, Testcontainers (MySQL + MinIO)
+- **Testing Layer** — Mockito for services, Testcontainers (MySQL + MinIO + Redis)
   for repositories/controllers
 
 ## Technology Stack
@@ -171,10 +173,11 @@ it maintainable:
 | Liquibase                       | Boot-managed     | Database migration & versioning, with performance indexes         |
 | MapStruct                       | 1.5.5.Final      | DTO ↔ entity mapping                                              |
 | AWS SDK v2 (S3)                 | 2.25.60          | S3-compatible object storage client (MinIO in dev/compose)        |
+| Redis (Spring Data Redis)       | 7.4              | Rate-limit counters shared across application instances           |
 | openhtmltopdf                   | 1.0.10           | HTML (Thymeleaf) → PDF rendering for card export                  |
 | Spring Boot Actuator + Micrometer/Prometheus | Boot-managed | Health checks, `/actuator/prometheus` metrics |
-| JUnit 5 / Mockito / Testcontainers | 5.10.2 / Boot-managed / Boot-managed | Unit and integration testing         |
-| Docker / Docker Compose         | -                | Containerization of app, MySQL, and MinIO                         |
+| JUnit 5 / Mockito / Testcontainers | 5.10.2 / Boot-managed / 1.21.4 | Unit and integration testing (MySQL, MinIO, Redis) |
+| Docker / Docker Compose         | -                | Containerization of app, MySQL, MinIO and Redis                   |
 | GitHub Actions                  | -                | CI: build, Checkstyle, unit + Testcontainers tests on every push  |
 | Swagger (springdoc-openapi)     | 2.5.0            | API documentation & testing                                        |
 
@@ -189,7 +192,7 @@ it maintainable:
 | Ownership Validator               | One reusable rule for "is this doctor allowed to see this patient" |
 | DTO + MapStruct                   | Clean API contracts, decoupled from JPA entities            |
 | Centralized Exception Handling    | Predictable, consistent error responses                     |
-| Rate Limiting Filter              | Simple in-memory sliding-window guard on auth endpoints      |
+| Rate Limiting Filter              | Redis-backed fixed-window counter on auth endpoints, shared by all instances |
 | Refresh-Token Rotation            | Short-lived JWT + DB-backed, single-use, revocable refresh token |
 | Request Correlation Filter        | Per-request ID (MDC) threaded through all log lines for traceability |
 
@@ -213,10 +216,11 @@ locally.
 - **Docker** — packages the Spring Boot application with a predefined Java
   runtime, plus `curl` for its own container healthcheck against
   `/actuator/health`
-- **Docker Compose** — orchestrates three containers:
+- **Docker Compose** — orchestrates four containers:
   - Spring Boot application
   - MySQL database (with a healthcheck gate before the app starts)
   - MinIO (S3-compatible object storage, with its own healthcheck gate)
+  - Redis (rate-limit counters shared across app instances, healthcheck gated)
 
 This mirrors real-world deployment practice: the app only starts once its
 dependencies report healthy, and the app itself only reports healthy once its
@@ -251,18 +255,12 @@ cd medical-card-application
 cp .env.template .env
 ```
 
-These are throwaway local values, safe to paste as-is for a review run:
+The template already holds throwaway local values, so nothing needs editing
+for a review run. Change them (especially `JWT_SECRET`) for any real deployment.
 
-```
-MYSQLDB_DATABASE=medical_card_application
-MYSQLDB_USER=medcard_user
-MYSQLDB_PASSWORD=medcard_pass
-MYSQLDB_ROOT_PASSWORD=root_pass
-JWT_SECRET=local-review-secret-key-please-change-in-production
-MINIO_ROOT_USER=medcard_storage
-MINIO_ROOT_PASSWORD=medcard_storage_pass
-STORAGE_BUCKET=medical-card-documents
-```
+> `JWT_SECRET` is required and must be at least 32 characters (256 bits).
+> The application itself has deliberately no default: it refuses to start
+> without it rather than silently signing tokens with a well-known key.
 
 ▶️ Run the Application (Docker)
 
@@ -271,7 +269,9 @@ docker compose up --build
 ```
 
 This command will:
-- **build the Spring Boot application image** (with a container healthcheck)
+- **build the Spring Boot application image from source** inside Docker
+  (multi-stage build, so no local Java or Maven is needed; the first build
+  downloads dependencies and takes a few minutes)
 - **start the MySQL database container**
 - **start the MinIO object storage container** and create the documents
   bucket automatically on first boot
@@ -293,8 +293,8 @@ curl -X POST http://localhost:8080/api/auth/registration \
   -H "Content-Type: application/json" \
   -d '{
         "email": "patient@example.com",
-        "password": "password123",
-        "repeatPassword": "password123",
+        "password": "Password123!",
+        "repeatPassword": "Password123!",
         "fullName": "Jane Patient",
         "role": "PATIENT"
       }'
@@ -302,7 +302,7 @@ curl -X POST http://localhost:8080/api/auth/registration \
 # Log in
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "patient@example.com", "password": "password123"}'
+  -d '{"email": "patient@example.com", "password": "Password123!"}'
 # → { "token": "...", "refreshToken": "..." }
 
 # Read your own card
@@ -317,12 +317,22 @@ curl -X POST http://localhost:8080/api/auth/refresh \
   -d '{"refreshToken": "<refreshToken>"}'
 ```
 
-Register a second account with `"role": "DOCTOR"` to try the doctor-side
-endpoints (`/api/care-links`, viewing an assigned patient's card, recording a
+Register a second account with `"role": "DOCTOR"`, then, as the patient, grant
+that doctor access with `POST /api/patients/me/care-links {"doctorEmail": "..."}`
+(access can be revoked any time via `DELETE /api/patients/me/care-links/{id}`).
+Only then can the doctor use the doctor-side
+endpoints (`/api/care-links/my-patients`, viewing the patient's card, recording a
 visit, etc.) — see Swagger UI for the full list.
+
+> All dates in requests and responses are ISO-8601: `yyyy-MM-dd` for dates,
+> `yyyy-MM-ddTHH:mm:ss` for date-times; error timestamps are UTC instants.
 
 > Login and registration are rate-limited (5 requests/minute per IP) — you'll
 > get `429 Too Many Requests` if you hit either endpoint faster than that.
+> The counters live in Redis, so the limit holds across several app instances.
+> Behind a reverse proxy set `FORWARD_HEADERS_STRATEGY=native` so the real
+> client IP is used; leave it at `none` when the app is exposed directly,
+> otherwise a client could forge `X-Forwarded-For` to dodge the limit.
 
 > `ADMIN` accounts can't self-register on purpose; to try the
 > `/api/audit-entries` or `/actuator/metrics` endpoints, insert an admin row

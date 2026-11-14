@@ -7,5 +7,7 @@ public interface ShareLinkService {
 
     ShareLinkResponseDto createShareLink(User currentDoctor, Long patientId);
 
+    void revokeShareLink(User currentDoctor, Long shareLinkId);
+
     byte[] exportSharedCard(String token);
 }

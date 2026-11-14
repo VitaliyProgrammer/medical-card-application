@@ -34,6 +34,9 @@ class PatientCardExportServiceImplTest {
     private PatientProfileRepository patientProfileRepository;
 
     @Mock
+    private PatientProfileLookup patientProfileLookup;
+
+    @Mock
     private AllergyRepository allergyRepository;
 
     @Mock
@@ -70,8 +73,8 @@ class PatientCardExportServiceImplTest {
     void exportMyCard_success() {
         byte[] pdfBytes = {1, 2, 3};
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(patientProfileRepository.findById(patient.getId())).thenReturn(Optional.of(patient));
         when(allergyRepository.findByPatientId(patient.getId())).thenReturn(List.of());
         when(conditionRepository.findByPatientId(patient.getId())).thenReturn(List.of());
@@ -88,8 +91,8 @@ class PatientCardExportServiceImplTest {
     @Test
     @DisplayName("exportMyCard: throws when the caller has no card yet")
     void exportMyCard_noProfile() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.empty());
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenThrow(new PatientProfileNotFoundException("Patient profile not found"));
 
         assertThrows(PatientProfileNotFoundException.class,
                 () -> patientCardExportService.exportMyCard(patientUser));
@@ -101,7 +104,7 @@ class PatientCardExportServiceImplTest {
         User doctor = new User();
         doctor.setId(2L);
 
-        doThrow(new ForbiddenActionException("You are not assigned to this patient's care!"))
+        doThrow(new ForbiddenActionException("You are not assigned to this patient's care"))
                 .when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
 
         assertThrows(ForbiddenActionException.class,

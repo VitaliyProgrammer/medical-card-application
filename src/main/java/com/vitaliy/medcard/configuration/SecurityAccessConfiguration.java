@@ -45,10 +45,10 @@ public class SecurityAccessConfiguration {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                                        "Full authentication is required to access this resource!"))
+                                        "Full authentication is required to access this resource"))
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                                        "You don't have permission to perform this action!"))
+                                        "You don't have permission to perform this action"))
                 )
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class)

@@ -6,5 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ShareLinkRepository extends JpaRepository<ShareLink, Long> {
 
-    Optional<ShareLink> findByToken(String token);
+    Optional<ShareLink> findByTokenHash(String tokenHash);
+
+    Optional<ShareLink> findByIdAndCreatedById(Long id, Long createdById);
 }

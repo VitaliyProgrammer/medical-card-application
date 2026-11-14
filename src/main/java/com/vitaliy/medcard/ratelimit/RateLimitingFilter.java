@@ -33,7 +33,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
                 response.setStatus(429);
                 response.setContentType("application/json");
                 response.getWriter().write(
-                        "{\"error\": \"Too many attempts. Please try again in a minute!\"}");
+                        "{\"error\": \"Too many attempts. Please try again in a minute\"}");
                 return;
             }
         }
