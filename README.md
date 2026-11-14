@@ -255,22 +255,12 @@ cd medical-card-application
 cp .env.template .env
 ```
 
-These are throwaway local values, safe to paste as-is for a review run:
-
-```
-MYSQLDB_DATABASE=medical_card_application
-MYSQLDB_USER=medcard_user
-MYSQLDB_PASSWORD=medcard_pass
-MYSQLDB_ROOT_PASSWORD=root_pass
-JWT_SECRET=local-review-secret-key-please-change-in-production
-MINIO_ROOT_USER=medcard_storage
-MINIO_ROOT_PASSWORD=medcard_storage_pass
-STORAGE_BUCKET=medical-card-documents
-```
+The template already holds throwaway local values, so nothing needs editing
+for a review run. Change them (especially `JWT_SECRET`) for any real deployment.
 
 > `JWT_SECRET` is required and must be at least 32 characters (256 bits).
-> There is deliberately no default: the app refuses to start without it
-> rather than silently signing tokens with a well-known key.
+> The application itself has deliberately no default: it refuses to start
+> without it rather than silently signing tokens with a well-known key.
 
 ▶️ Run the Application (Docker)
 
@@ -279,7 +269,9 @@ docker compose up --build
 ```
 
 This command will:
-- **build the Spring Boot application image** (with a container healthcheck)
+- **build the Spring Boot application image from source** inside Docker
+  (multi-stage build, so no local Java or Maven is needed; the first build
+  downloads dependencies and takes a few minutes)
 - **start the MySQL database container**
 - **start the MinIO object storage container** and create the documents
   bucket automatically on first boot
@@ -301,8 +293,8 @@ curl -X POST http://localhost:8080/api/auth/registration \
   -H "Content-Type: application/json" \
   -d '{
         "email": "patient@example.com",
-        "password": "password123",
-        "repeatPassword": "password123",
+        "password": "Password123!",
+        "repeatPassword": "Password123!",
         "fullName": "Jane Patient",
         "role": "PATIENT"
       }'
@@ -310,7 +302,7 @@ curl -X POST http://localhost:8080/api/auth/registration \
 # Log in
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "patient@example.com", "password": "password123"}'
+  -d '{"email": "patient@example.com", "password": "Password123!"}'
 # → { "token": "...", "refreshToken": "..." }
 
 # Read your own card

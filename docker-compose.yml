@@ -2,30 +2,28 @@ services:
   mysqldb:
     image: mysql:8.0
     restart: unless-stopped
-    env_file: ./.env.template
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQLDB_ROOT_PASSWORD}
-      MYSQL_USER: ${MYSQLDB_USER}
-      MYSQL_PASSWORD: ${MYSQLDB_PASSWORD}
-      MYSQL_DATABASE: ${MYSQLDB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQLDB_ROOT_PASSWORD:?Run cp .env.template .env first}
+      MYSQL_USER: ${MYSQLDB_USER:?Run cp .env.template .env first}
+      MYSQL_PASSWORD: ${MYSQLDB_PASSWORD:?Run cp .env.template .env first}
+      MYSQL_DATABASE: ${MYSQLDB_DATABASE:?Run cp .env.template .env first}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQLDB_ROOT_PASSWORD}"]
-      interval: 30s
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   minio:
     image: cgr.dev/chainguard/minio@sha256:fbbc60f24cc4b293ef713d0d7c895ddf1d2ed54e6d4f9d7c1044eb840bff5a28
     restart: unless-stopped
-    env_file: ./.env.template
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Run cp .env.template .env first}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run cp .env.template .env first}
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
       - "9001:9001"
     volumes:
       - minio_data:/data
@@ -56,7 +54,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file: ./.env.template
     ports:
       - "8080:8080"
     environment:
@@ -65,19 +62,23 @@ services:
           "spring.datasource.url": "jdbc:mysql://mysqldb:3306/${MYSQLDB_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
           "spring.datasource.username": "${MYSQLDB_USER}",
           "spring.datasource.password": "${MYSQLDB_PASSWORD}",
-          "jwt.secret": "${JWT_SECRET}",
+          "jwt.secret": "${JWT_SECRET:?Run cp .env.template .env first}",
           "app.storage.endpoint": "http://minio:9000",
           "app.storage.access-key": "${MINIO_ROOT_USER}",
           "app.storage.secret-key": "${MINIO_ROOT_PASSWORD}",
-          "app.storage.bucket": "${STORAGE_BUCKET}",
-          "spring.data.redis.host": "redis"
+          "app.storage.bucket": "${STORAGE_BUCKET:-medical-card-documents}",
+          "spring.data.redis.host": "redis",
+          "spring.mail.host": "${MAIL_HOST:-sandbox.smtp.mailtrap.io}",
+          "spring.mail.port": "${MAIL_PORT:-2525}",
+          "spring.mail.username": "${MAIL_USERNAME:-}",
+          "spring.mail.password": "${MAIL_PASSWORD:-}"
         }
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 6
-      start_period: 30s
+      start_period: 180s
 
 volumes:
   mysql_data:
