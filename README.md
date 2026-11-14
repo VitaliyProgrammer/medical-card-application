@@ -293,8 +293,8 @@ curl -X POST http://localhost:8080/api/auth/registration \
   -H "Content-Type: application/json" \
   -d '{
         "email": "patient@example.com",
-        "password": "password123",
-        "repeatPassword": "password123",
+        "password": "Password123!",
+        "repeatPassword": "Password123!",
         "fullName": "Jane Patient",
         "role": "PATIENT"
       }'
@@ -302,7 +302,7 @@ curl -X POST http://localhost:8080/api/auth/registration \
 # Log in
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "patient@example.com", "password": "password123"}'
+  -d '{"email": "patient@example.com", "password": "Password123!"}'
 # → { "token": "...", "refreshToken": "..." }
 
 # Read your own card
