@@ -59,7 +59,7 @@ class GlobalExceptionHandlerTest {
             ResponseEntity<Object> response, HttpStatus status, String message) {
         assertThat(response.getStatusCode()).isEqualTo(status);
         assertThat(errorOf(response)).isEqualTo(message);
-        assertThat(((Map<?, ?>) response.getBody())).containsKey("timestamp");
+        assertThat(((Map<?, ?>) response.getBody()).get("timestamp")).isNotNull();
     }
 
     private String errorOf(ResponseEntity<Object> response) {
