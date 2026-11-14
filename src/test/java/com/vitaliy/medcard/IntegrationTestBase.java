@@ -10,12 +10,15 @@ public abstract class IntegrationTestBase {
 
     private static final int MYSQL_STARTUP_TIMEOUT_SECONDS = 300;
 
+    private static final String MINIO_IMAGE = "cgr.dev/chainguard/minio@"
+            + "sha256:fbbc60f24cc4b293ef713d0d7c895ddf1d2ed54e6d4f9d7c1044eb840bff5a28";
+
     static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>("mysql:8.0")
             .withCommand("--innodb-buffer-pool-size=64M", "--innodb-redo-log-capacity=128M")
             .withStartupTimeoutSeconds(MYSQL_STARTUP_TIMEOUT_SECONDS);
 
     static final GenericContainer<?> MINIO_CONTAINER =
-            new GenericContainer<>("cgr.dev/chainguard/minio:latest-dev")
+            new GenericContainer<>(MINIO_IMAGE)
                     .withExposedPorts(9000)
                     .withEnv("MINIO_ROOT_USER", "minioadmin")
                     .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")

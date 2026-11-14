@@ -17,7 +17,7 @@ services:
       retries: 5
 
   minio:
-    image: cgr.dev/chainguard/minio:latest-dev
+    image: cgr.dev/chainguard/minio@sha256:fbbc60f24cc4b293ef713d0d7c895ddf1d2ed54e6d4f9d7c1044eb840bff5a28
     restart: unless-stopped
     env_file: ./.env.template
     environment:
