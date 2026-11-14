@@ -291,7 +291,7 @@ This command will:
 - **return only once the application itself is healthy**
 
 > ⏱️ The first run downloads Maven dependencies and creates the schema, so it
-> takes about 3–6 minutes depending on the machine and network. Later runs
+> can take 5–20 minutes depending on the machine and network. Later runs
 > start much faster. To watch progress: `docker compose logs -f app`.
 
 Check that everything is up:
