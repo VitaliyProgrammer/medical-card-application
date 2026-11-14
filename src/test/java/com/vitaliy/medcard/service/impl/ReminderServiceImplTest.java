@@ -16,7 +16,6 @@ import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.Reminder;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.ReminderType;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.ReminderRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -35,7 +34,7 @@ class ReminderServiceImplTest {
     private ReminderRepository reminderRepository;
 
     @Mock
-    private PatientProfileRepository patientProfileRepository;
+    private PatientProfileLookup patientProfileLookup;
 
     @Mock
     private ReminderMapper reminderMapper;
@@ -74,8 +73,8 @@ class ReminderServiceImplTest {
         ReminderResponseDto responseDto = new ReminderResponseDto(
                 100L, "Take medication", ReminderType.MEDICATION, request.dueAt(), false);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(reminderMapper.toEntity(request)).thenReturn(reminder);
         when(reminderRepository.save(reminder)).thenReturn(reminder);
         when(reminderMapper.toDto(reminder)).thenReturn(responseDto);

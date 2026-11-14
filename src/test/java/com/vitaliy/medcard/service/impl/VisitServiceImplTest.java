@@ -37,6 +37,9 @@ class VisitServiceImplTest {
     private PatientProfileRepository patientProfileRepository;
 
     @Mock
+    private PatientProfileLookup patientProfileLookup;
+
+    @Mock
     private VisitMapper visitMapper;
 
     @Mock
@@ -112,8 +115,8 @@ class VisitServiceImplTest {
         VisitResponseDto responseDto = new VisitResponseDto(
                 500L, "Dr. House", null, null, null, null, null, "Common cold", null);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(visitRepository.findByPatientIdOrderByVisitDateDesc(patient.getId()))
                 .thenReturn(List.of(visit));
         when(visitMapper.toDto(visit)).thenReturn(responseDto);
@@ -126,8 +129,8 @@ class VisitServiceImplTest {
     @Test
     @DisplayName("getMyVisits: throws when the caller has no card yet")
     void getMyVisits_noProfile() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.empty());
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenThrow(new PatientProfileNotFoundException("Patient profile not found"));
 
         assertThrows(PatientProfileNotFoundException.class,
                 () -> visitService.getMyVisits(patientUser));

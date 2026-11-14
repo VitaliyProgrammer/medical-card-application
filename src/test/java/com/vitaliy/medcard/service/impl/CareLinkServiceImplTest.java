@@ -22,7 +22,6 @@ import com.vitaliy.medcard.model.status.AllergySeverity;
 import com.vitaliy.medcard.model.status.UserRole;
 import com.vitaliy.medcard.repository.AllergyRepository;
 import com.vitaliy.medcard.repository.CareLinkRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,7 +50,7 @@ class CareLinkServiceImplTest {
     private CareLinkRepository careLinkRepository;
 
     @Mock
-    private PatientProfileRepository patientProfileRepository;
+    private PatientProfileLookup patientProfileLookup;
 
     @Mock
     private UserRepository userRepository;
@@ -96,8 +95,8 @@ class CareLinkServiceImplTest {
                 100L, doctor.getId(), "Dr. House", patient.getId(), "Jane Patient",
                 LocalDateTime.now());
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(userRepository.findByEmail(DOCTOR_EMAIL)).thenReturn(Optional.of(doctor));
         when(careLinkRepository.existsByDoctorIdAndPatientId(doctor.getId(), patient.getId()))
                 .thenReturn(false);
@@ -122,8 +121,8 @@ class CareLinkServiceImplTest {
         otherPatient.setId(7L);
         otherPatient.setRole(UserRole.PATIENT);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(userRepository.findByEmail("other@test.com")).thenReturn(Optional.of(otherPatient));
 
         assertThrows(UserNotFoundException.class, () -> careLinkService.grantDoctorAccess(
@@ -135,8 +134,8 @@ class CareLinkServiceImplTest {
     @Test
     @DisplayName("grantDoctorAccess: rejects an unknown email")
     void grantDoctorAccess_doctorNotFound() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(userRepository.findByEmail("nobody@test.com")).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundException.class, () -> careLinkService.grantDoctorAccess(
@@ -146,8 +145,8 @@ class CareLinkServiceImplTest {
     @Test
     @DisplayName("grantDoctorAccess: rejects granting the same doctor twice")
     void grantDoctorAccess_duplicate() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(userRepository.findByEmail(DOCTOR_EMAIL)).thenReturn(Optional.of(doctor));
         when(careLinkRepository.existsByDoctorIdAndPatientId(doctor.getId(), patient.getId()))
                 .thenReturn(true);
@@ -166,8 +165,8 @@ class CareLinkServiceImplTest {
                 100L, doctor.getId(), "Dr. House", patient.getId(), "Jane Patient",
                 LocalDateTime.now());
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(careLinkRepository.findByPatientId(patient.getId())).thenReturn(List.of(careLink));
         when(careLinkMapper.toDto(careLink)).thenReturn(responseDto);
 
@@ -180,8 +179,8 @@ class CareLinkServiceImplTest {
         CareLink careLink = new CareLink();
         careLink.setId(100L);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(careLinkRepository.findByIdAndPatientId(100L, patient.getId()))
                 .thenReturn(Optional.of(careLink));
 
@@ -193,8 +192,8 @@ class CareLinkServiceImplTest {
     @Test
     @DisplayName("revokeDoctorAccess: another patient's care link is not found")
     void revokeDoctorAccess_careLinkOfAnotherPatient() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(careLinkRepository.findByIdAndPatientId(100L, patient.getId()))
                 .thenReturn(Optional.empty());
 

@@ -6,7 +6,6 @@ import com.vitaliy.medcard.dto.DocumentResponseDto;
 import com.vitaliy.medcard.exception.DocumentNotFoundException;
 import com.vitaliy.medcard.exception.FileStorageException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
-import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.exception.UnsupportedFileTypeException;
 import com.vitaliy.medcard.mapper.DocumentMapper;
 import com.vitaliy.medcard.model.Document;
@@ -14,7 +13,6 @@ import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.DocumentType;
 import com.vitaliy.medcard.repository.DocumentRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.service.DocumentService;
 import com.vitaliy.medcard.service.FileStorageService;
 import com.vitaliy.medcard.util.FileSignatures;
@@ -42,7 +40,7 @@ public class DocumentServiceImpl implements DocumentService {
     private static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024;
 
     private final DocumentRepository documentRepository;
-    private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
     private final FileStorageService fileStorageService;
     private final DocumentMapper documentMapper;
     private final PatientAccessValidator patientAccessValidator;
@@ -51,7 +49,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Audited(action = "UPLOAD_DOCUMENT")
     public DocumentResponseDto uploadMyDocument(
             User currentUser, MultipartFile file, DocumentType documentType) {
-        PatientProfile patient = findPatientByUserId(currentUser.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         return storeDocument(patient, currentUser, file, documentType);
     }
@@ -59,7 +57,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional(readOnly = true)
     public List<DocumentResponseDto> getMyDocuments(User currentUser, DocumentType typeFilter) {
-        PatientProfile patient = findPatientByUserId(currentUser.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         return listDocuments(patient.getId(), typeFilter);
     }
@@ -202,11 +200,5 @@ public class DocumentServiceImpl implements DocumentService {
             log.warn("Could not delete stored file {}, it is now orphaned", storedFileName,
                     exception);
         }
-    }
-
-    private PatientProfile findPatientByUserId(Long userId) {
-        return patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + userId + "!"));
     }
 }

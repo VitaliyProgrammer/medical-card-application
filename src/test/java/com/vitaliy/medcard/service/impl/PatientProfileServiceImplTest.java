@@ -33,6 +33,9 @@ class PatientProfileServiceImplTest {
     private PatientProfileRepository patientProfileRepository;
 
     @Mock
+    private PatientProfileLookup patientProfileLookup;
+
+    @Mock
     private PatientProfileMapper patientProfileMapper;
 
     @Mock
@@ -64,8 +67,8 @@ class PatientProfileServiceImplTest {
     @Test
     @DisplayName("getMyProfile: returns the caller's own card")
     void getMyProfile_success() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(profile));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(profile);
         when(patientProfileMapper.toDto(profile)).thenReturn(responseDto);
 
         PatientProfileResponseDto result = patientProfileService.getMyProfile(patientUser);
@@ -76,8 +79,8 @@ class PatientProfileServiceImplTest {
     @Test
     @DisplayName("getMyProfile: throws when the caller has no card yet")
     void getMyProfile_notFound() {
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.empty());
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenThrow(new PatientProfileNotFoundException("Patient profile not found"));
 
         assertThrows(PatientProfileNotFoundException.class,
                 () -> patientProfileService.getMyProfile(patientUser));
@@ -89,8 +92,8 @@ class PatientProfileServiceImplTest {
         PatientProfileRequestDto request = new PatientProfileRequestDto();
         request.setBloodGroup("O+");
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(profile));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(profile);
         when(patientProfileMapper.toDto(profile)).thenReturn(responseDto);
 
         PatientProfileResponseDto result =
