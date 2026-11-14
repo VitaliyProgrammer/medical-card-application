@@ -213,9 +213,9 @@ The application is fully containerized using Docker and Docker Compose, so
 anyone can run the full stack without installing Java, Maven, or MySQL
 locally.
 
-- **Docker** — packages the Spring Boot application with a predefined Java
-  runtime, plus `curl` for its own container healthcheck against
-  `/actuator/health`
+- **Docker** — a multi-stage build compiles the application from source with
+  the Maven wrapper, then runs it on a slim Java runtime as a non-root user,
+  with `curl` for its own container healthcheck against `/actuator/health`
 - **Docker Compose** — orchestrates four containers:
   - Spring Boot application
   - MySQL database (with a healthcheck gate before the app starts)
@@ -231,11 +231,24 @@ own `/actuator/health` responds.
 The application is fully containerized and can be started locally without
 manual database setup, Liquibase configuration, or environment tuning.
 
+**Quick start** — four commands, nothing else to install or edit:
+
+```bash
+git clone https://github.com/VitaliyProgrammer/medical-card-application.git
+cd medical-card-application
+cp .env.template .env
+docker compose up --build -d --wait
+```
+
+When the last command returns, the API is ready at
+[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html).
+The steps below explain each command.
+
 ### 1. Prerequisites
 
-- **Docker**
-- **Docker Compose**
-- A web browser (for Swagger UI)
+- **Docker** with **Docker Compose v2** (Docker Desktop on Windows/macOS
+  includes both) — Java, Maven and MySQL are **not** needed on the host
+- Free ports **8080** (API) and **9001** (MinIO console)
 
 ```bash
 docker --version
@@ -245,7 +258,7 @@ docker compose version
 ### 2. Clone the repository
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/VitaliyProgrammer/medical-card-application.git
 cd medical-card-application
 ```
 
@@ -257,35 +270,53 @@ cp .env.template .env
 
 The template already holds throwaway local values, so nothing needs editing
 for a review run. Change them (especially `JWT_SECRET`) for any real deployment.
+If this step is skipped, `docker compose` stops straight away with
+`Run cp .env.template .env first`.
 
 > `JWT_SECRET` is required and must be at least 32 characters (256 bits).
 > The application itself has deliberately no default: it refuses to start
 > without it rather than silently signing tokens with a well-known key.
 
-▶️ Run the Application (Docker)
+### 4. Run the application
 
 ```bash
-docker compose up --build
+docker compose up --build -d --wait
 ```
 
 This command will:
 - **build the Spring Boot application image from source** inside Docker
-  (multi-stage build, so no local Java or Maven is needed; the first build
-  downloads dependencies and takes a few minutes)
-- **start the MySQL database container**
-- **start the MinIO object storage container** and create the documents
-  bucket automatically on first boot
-- **apply Liquibase migrations automatically**
-- **launch the application in a ready-to-use state**
+  (multi-stage build, so no local Java or Maven is needed)
+- **start MySQL, MinIO and Redis** and wait until each reports healthy
+- **apply Liquibase migrations** and create the documents bucket on first boot
+- **return only once the application itself is healthy**
 
-🛑 Stop the Application
+> ⏱️ The first run downloads Maven dependencies and creates the schema, so it
+> can take 5–20 minutes depending on the machine and network. Later runs
+> start much faster. To watch progress: `docker compose logs -f app`.
+
+Check that everything is up:
+
+```bash
+docker compose ps                              # all four services "healthy"
+curl http://localhost:8080/actuator/health     # {"status":"UP"}
+```
+
+### 5. Stop the application
 
 ```bash
 docker compose down          # stop containers, keep the data volumes
 docker compose down -v       # stop and wipe all data volumes too
 ```
 
-### 4. Try it out
+### 6. Try it out
+
+The easiest way is **Swagger UI** at
+[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html):
+register, log in, copy the `token` from the response, press **Authorize** and
+paste it — every endpoint can then be called from the browser.
+
+The same flow with `curl` (bash syntax — on Windows use Git Bash or WSL, or
+just use Swagger UI):
 
 ```bash
 # Register a patient
@@ -334,10 +365,18 @@ visit, etc.) — see Swagger UI for the full list.
 > client IP is used; leave it at `none` when the app is exposed directly,
 > otherwise a client could forge `X-Forwarded-For` to dodge the limit.
 
-> `ADMIN` accounts can't self-register on purpose; to try the
-> `/api/audit-entries` or `/actuator/metrics` endpoints, insert an admin row
-> directly: `docker compose exec mysqldb mysql -uroot -p<MYSQLDB_ROOT_PASSWORD> medical_card_application`,
-> then `UPDATE users SET role = 'ADMIN' WHERE email = '...';`.
+> `ADMIN` accounts can't self-register on purpose. To try the
+> `/api/audit-entries` or `/actuator/metrics` endpoints, promote a registered
+> user directly in the database (the password is the one from `.env.template`),
+> then **log in again** — the role is stored inside the JWT:
+>
+> ```bash
+> docker compose exec mysqldb mysql -uroot -proot_pass medical_card_application \
+>   -e "UPDATE users SET role = 'ADMIN' WHERE email = 'patient@example.com';"
+> ```
+
+> MinIO console ([http://localhost:9001](http://localhost:9001)) login:
+> `medcard_storage` / `medcard_storage_pass` (from `.env.template`).
 
 ## Running the tests
 
@@ -347,8 +386,9 @@ visit, etc.) — see Swagger UI for the full list.
 
 Unit tests (Mockito) run with no external dependencies. Repository/controller
 integration tests use [Testcontainers](https://testcontainers.com/) to spin up
-a real, disposable MySQL container **and** a real, disposable MinIO container
-— Docker must be running for those.
+real, disposable MySQL, MinIO and Redis containers — Docker must be running
+for those. Unlike the Docker quick start, running the tests needs JDK 17 on
+the host (the Maven wrapper downloads Maven itself).
 
 ## 📘 API Documentation
 

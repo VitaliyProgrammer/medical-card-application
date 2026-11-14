@@ -133,7 +133,7 @@
     <text x="932" y="516" font-family="ui-monospace, Consolas, monospace" font-size="15" fill="#334155">id <tspan fill="#64748b">PK</tspan></text>
     <text x="932" y="536" font-family="ui-monospace, Consolas, monospace" font-size="15" fill="#334155">patient_id <tspan fill="#64748b">FK</tspan></text>
     <text x="932" y="556" font-family="ui-monospace, Consolas, monospace" font-size="15" fill="#334155">created_by <tspan fill="#64748b">FK</tspan></text>
-    <text x="932" y="576" font-family="ui-monospace, Consolas, monospace" font-size="15" fill="#334155">token</text>
+    <text x="932" y="576" font-family="ui-monospace, Consolas, monospace" font-size="15" fill="#334155">token_hash</text>
   </g>
 
   <!-- AUDIT_ENTRY (standalone, no lines; widened to fit the longer note at the larger font) -->

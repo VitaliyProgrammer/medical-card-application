@@ -24,8 +24,8 @@ public class ReminderScanScheduler {
                 reminderRepository.findByDueAtBeforeAndNotifiedFalse(LocalDateTime.now());
 
         for (Reminder reminder : overdueReminders) {
-            log.info("Reminder due for patient {}: [{}] {}",
-                    reminder.getPatient().getId(), reminder.getType(), reminder.getTitle());
+            log.info("Reminder {} due for patient {}: [{}]",
+                    reminder.getId(), reminder.getPatient().getId(), reminder.getType());
             reminder.setNotified(true);
         }
 
