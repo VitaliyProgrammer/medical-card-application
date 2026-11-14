@@ -39,7 +39,7 @@ public class ShareLinkServiceImpl implements ShareLinkService {
 
         PatientProfile patient = patientProfileRepository.findById(patientId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + patientId + "!"));
+                        "Patient profile not found: " + patientId));
 
         String rawToken = UUID.randomUUID().toString();
 
@@ -60,7 +60,7 @@ public class ShareLinkServiceImpl implements ShareLinkService {
         ShareLink shareLink = shareLinkRepository
                 .findByIdAndCreatedById(shareLinkId, currentDoctor.getId())
                 .orElseThrow(() -> new ShareLinkNotFoundException(
-                        "Share link not found: " + shareLinkId + "!"));
+                        "Share link not found: " + shareLinkId));
 
         if (shareLink.getRevokedAt() == null) {
             shareLink.setRevokedAt(LocalDateTime.now());
@@ -72,13 +72,13 @@ public class ShareLinkServiceImpl implements ShareLinkService {
     @Audited(action = "EXPORT_SHARED_CARD")
     public byte[] exportSharedCard(String token) {
         ShareLink shareLink = shareLinkRepository.findByTokenHash(TokenHasher.sha256Hex(token))
-                .orElseThrow(() -> new ShareLinkNotFoundException("Share link not found!"));
+                .orElseThrow(() -> new ShareLinkNotFoundException("Share link not found"));
 
         if (shareLink.getRevokedAt() != null) {
-            throw new ShareLinkExpiredException("This share link has been revoked!");
+            throw new ShareLinkExpiredException("This share link has been revoked");
         }
         if (shareLink.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ShareLinkExpiredException("This share link has expired!");
+            throw new ShareLinkExpiredException("This share link has expired");
         }
 
         return patientCardExportService.exportCardById(shareLink.getPatient().getId());

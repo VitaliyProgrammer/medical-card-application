@@ -96,7 +96,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         Document document = documentRepository.findByIdAndPatientId(documentId, patientId)
                 .orElseThrow(() -> new DocumentNotFoundException(
-                        "Document not found: " + documentId + "!"));
+                        "Document not found: " + documentId));
 
         return toFileDto(document);
     }
@@ -123,19 +123,19 @@ public class DocumentServiceImpl implements DocumentService {
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new UnsupportedFileTypeException("Uploaded file is empty!");
+            throw new UnsupportedFileTypeException("Uploaded file is empty");
         }
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
-            throw new UnsupportedFileTypeException("File exceeds the 10 MB size limit!");
+            throw new UnsupportedFileTypeException("File exceeds the 10 MB size limit");
         }
         if (!FileSignatures.supportedContentTypes().contains(file.getContentType())) {
             throw new UnsupportedFileTypeException(
-                    "Unsupported file type: " + file.getContentType() + "!");
+                    "Unsupported file type: " + file.getContentType());
         }
         if (!FileSignatures.matches(file.getContentType(), readHeader(file))) {
             throw new UnsupportedFileTypeException(
                     "File content doesn't match its declared type: "
-                            + file.getContentType() + "!");
+                            + file.getContentType());
         }
     }
 
@@ -143,7 +143,7 @@ public class DocumentServiceImpl implements DocumentService {
         try (InputStream inputStream = file.getInputStream()) {
             return inputStream.readNBytes(FileSignatures.HEADER_LENGTH);
         } catch (IOException exception) {
-            throw new FileStorageException("Failed to read the uploaded file!");
+            throw new FileStorageException("Failed to read the uploaded file");
         }
     }
 
@@ -158,10 +158,10 @@ public class DocumentServiceImpl implements DocumentService {
     private Document getOwnedDocument(User currentUser, Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new DocumentNotFoundException(
-                        "Document not found: " + documentId + "!"));
+                        "Document not found: " + documentId));
 
         if (!document.getPatient().getUser().getId().equals(currentUser.getId())) {
-            throw new ForbiddenActionException("This document doesn't belong to you!");
+            throw new ForbiddenActionException("This document doesn't belong to you");
         }
 
         return document;

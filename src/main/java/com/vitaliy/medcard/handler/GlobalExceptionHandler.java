@@ -77,7 +77,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
-        return respond(HttpStatus.FORBIDDEN, "You don't have permission to perform this action!");
+        return respond(HttpStatus.FORBIDDEN, "You don't have permission to perform this action");
     }
 
     @ExceptionHandler({
@@ -103,7 +103,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleDataIntegrityViolation(
             DataIntegrityViolationException ex) {
         logger.warn("Rejected a write that violates a database constraint", ex);
-        return respond(HttpStatus.CONFLICT, "This record conflicts with existing data!");
+        return respond(HttpStatus.CONFLICT, "This record conflicts with existing data");
     }
 
     @ExceptionHandler(ShareLinkExpiredException.class)
@@ -115,14 +115,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleInfrastructureFailure(RuntimeException ex) {
         logger.error("Infrastructure failure", ex);
         return respond(HttpStatus.INTERNAL_SERVER_ERROR,
-                "The file service is temporarily unavailable. Please try again later!");
+                "The file service is temporarily unavailable. Please try again later");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpected(Exception ex) {
         logger.error("Unhandled exception", ex);
         return respond(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Something went wrong. Please try again later!");
+                "Something went wrong. Please try again later");
     }
 
     private ResponseEntity<Object> respond(HttpStatus status, Object errorDetails) {

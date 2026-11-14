@@ -18,6 +18,6 @@ public class CurrentUserService {
 
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException(
-                        "User not found with email: " + email + "!"));
+                        "User not found with email: " + email));
     }
 }

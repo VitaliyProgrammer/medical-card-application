@@ -104,7 +104,7 @@ class PatientCardExportServiceImplTest {
         User doctor = new User();
         doctor.setId(2L);
 
-        doThrow(new ForbiddenActionException("You are not assigned to this patient's care!"))
+        doThrow(new ForbiddenActionException("You are not assigned to this patient's care"))
                 .when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
 
         assertThrows(ForbiddenActionException.class,

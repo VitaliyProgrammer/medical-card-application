@@ -87,7 +87,7 @@ class ShareLinkServiceImplTest {
     @Test
     @DisplayName("createShareLink: rejects an unassigned doctor")
     void createShareLink_notAssigned() {
-        doThrow(new ForbiddenActionException("You are not assigned to this patient's care!"))
+        doThrow(new ForbiddenActionException("You are not assigned to this patient's care"))
                 .when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
 
         assertThrows(ForbiddenActionException.class,

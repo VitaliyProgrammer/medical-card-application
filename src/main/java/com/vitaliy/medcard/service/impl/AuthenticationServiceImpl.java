@@ -78,12 +78,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public UserRegistrationResponseDto register(UserRegistrationRequestDto request) {
 
         if (request.getRole() == UserRole.ADMIN) {
-            throw new RegistrationException("Self-registration as ADMIN is not allowed!");
+            throw new RegistrationException("Self-registration as ADMIN is not allowed");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RegistrationException(
-                    "User with email " + request.getEmail() + " already exists!");
+                    "User with email " + request.getEmail() + " already exists");
         }
 
         User user = new User();
@@ -110,10 +110,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public UserLoginResponseDto login(UserLoginRequestDto request) {
 
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password!"));
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new InvalidCredentialsException("Invalid email or password!");
+            throw new InvalidCredentialsException("Invalid email or password");
         }
 
         return issueTokenPair(user);
@@ -125,10 +125,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         RefreshToken storedToken = refreshTokenRepository
                 .findByTokenHash(TokenHasher.sha256Hex(request.refreshToken()))
-                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid!"));
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid"));
 
         if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new InvalidRefreshTokenException("Refresh token is expired or revoked!");
+            throw new InvalidRefreshTokenException("Refresh token is expired or revoked");
         }
 
         storedToken.setRevoked(true);
@@ -155,11 +155,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         PasswordResetToken resetToken = passwordResetTokenRepository
                 .findByTokenHash(TokenHasher.sha256Hex(request.token()))
                 .orElseThrow(() ->
-                        new InvalidPasswordResetTokenException("Password reset token is invalid!"));
+                        new InvalidPasswordResetTokenException("Password reset token is invalid"));
 
         if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new InvalidPasswordResetTokenException(
-                    "Password reset token is expired or already used!");
+                    "Password reset token is expired or already used");
         }
 
         User user = resetToken.getUser();

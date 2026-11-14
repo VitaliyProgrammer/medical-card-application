@@ -46,7 +46,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
         if (originalFileName.contains("..")) {
             throw new UnsupportedFileTypeException(
-                    "Filename contains an invalid path sequence: " + originalFileName + "!");
+                    "Filename contains an invalid path sequence: " + originalFileName);
         }
 
         String key = UUID.randomUUID() + "_" + originalFileName;
@@ -61,7 +61,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             s3Client.putObject(request, RequestBody.fromInputStream(
                     file.getInputStream(), file.getSize()));
         } catch (IOException | S3Exception e) {
-            throw new FileStorageException("Failed to store file: " + originalFileName + "!");
+            throw new FileStorageException("Failed to store file: " + originalFileName);
         }
 
         return key;
@@ -77,9 +77,9 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             return new InputStreamResource(s3Client.getObject(request));
         } catch (NoSuchKeyException e) {
-            throw new FileStorageException("File not found: " + key + "!");
+            throw new FileStorageException("File not found: " + key);
         } catch (S3Exception e) {
-            throw new FileStorageException("Failed to load file: " + key + "!");
+            throw new FileStorageException("Failed to load file: " + key);
         }
     }
 
@@ -93,7 +93,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             s3Client.deleteObject(request);
         } catch (S3Exception e) {
-            throw new FileStorageException("Failed to delete file: " + key + "!");
+            throw new FileStorageException("Failed to delete file: " + key);
         }
     }
 

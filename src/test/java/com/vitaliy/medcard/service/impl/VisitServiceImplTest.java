@@ -102,7 +102,7 @@ class VisitServiceImplTest {
         VisitRequestDto request =
                 new VisitRequestDto(null, null, null, null, "Common cold", null);
 
-        doThrow(new ForbiddenActionException("You are not assigned to this patient's care!"))
+        doThrow(new ForbiddenActionException("You are not assigned to this patient's care"))
                 .when(patientAccessValidator).validateDoctorAccess(doctor, patient.getId());
 
         assertThrows(ForbiddenActionException.class,

@@ -49,7 +49,7 @@ public class PatientCardExportServiceImpl implements PatientCardExportService {
     public byte[] exportCardById(Long patientId) {
         PatientProfile patient = patientProfileRepository.findById(patientId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found: " + patientId + "!"));
+                        "Patient profile not found: " + patientId));
 
         List<Allergy> allergies = allergyRepository.findByPatientId(patientId);
         List<Condition> conditions = conditionRepository.findByPatientId(patientId);

@@ -55,10 +55,10 @@ public class AllergyServiceImpl implements AllergyService {
     public void deleteMyAllergy(User currentUser, Long allergyId) {
         Allergy allergy = allergyRepository.findById(allergyId)
                 .orElseThrow(() -> new AllergyNotFoundException(
-                        "Allergy not found: " + allergyId + "!"));
+                        "Allergy not found: " + allergyId));
 
         if (!allergy.getPatient().getUser().getId().equals(currentUser.getId())) {
-            throw new ForbiddenActionException("This allergy doesn't belong to you!");
+            throw new ForbiddenActionException("This allergy doesn't belong to you");
         }
 
         allergyRepository.delete(allergy);

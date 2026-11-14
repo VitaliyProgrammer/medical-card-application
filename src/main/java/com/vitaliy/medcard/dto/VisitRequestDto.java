@@ -7,7 +7,7 @@ public record VisitRequestDto(
         Integer heartRate,
         Double temperatureCelsius,
         Double weightKg,
-        @NotBlank(message = "Diagnosis can't be blank!")
+        @NotBlank(message = "Diagnosis can't be blank")
         String diagnosis,
         String notes
 ) {

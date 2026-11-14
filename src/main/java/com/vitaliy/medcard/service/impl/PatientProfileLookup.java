@@ -15,6 +15,6 @@ class PatientProfileLookup {
     PatientProfile getByUserId(Long userId) {
         return patientProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + userId + "!"));
+                        "Patient profile not found for user: " + userId));
     }
 }
