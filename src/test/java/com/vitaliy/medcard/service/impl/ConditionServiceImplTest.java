@@ -18,7 +18,6 @@ import com.vitaliy.medcard.model.status.ConditionStatus;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.repository.ConditionRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +36,7 @@ class ConditionServiceImplTest {
     private ConditionRepository conditionRepository;
 
     @Mock
-    private PatientProfileRepository patientProfileRepository;
+    private PatientProfileLookup patientProfileLookup;
 
     @Mock
     private ConditionMapper conditionMapper;
@@ -78,8 +77,8 @@ class ConditionServiceImplTest {
         ConditionResponseDto responseDto =
                 new ConditionResponseDto(200L, "Asthma", ConditionStatus.ACTIVE, null, null);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(conditionMapper.toEntity(request)).thenReturn(condition);
         when(conditionRepository.save(condition)).thenReturn(condition);
         when(conditionMapper.toDto(condition)).thenReturn(responseDto);

@@ -5,13 +5,11 @@ import com.vitaliy.medcard.dto.AllergyRequestDto;
 import com.vitaliy.medcard.dto.AllergyResponseDto;
 import com.vitaliy.medcard.exception.AllergyNotFoundException;
 import com.vitaliy.medcard.exception.ForbiddenActionException;
-import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.mapper.AllergyMapper;
 import com.vitaliy.medcard.model.Allergy;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.repository.AllergyRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.service.AllergyService;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.time.LocalDateTime;
@@ -26,14 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class AllergyServiceImpl implements AllergyService {
 
     private final AllergyRepository allergyRepository;
-    private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
     private final AllergyMapper allergyMapper;
     private final PatientAccessValidator patientAccessValidator;
 
     @Override
     @Transactional(readOnly = true)
     public List<AllergyResponseDto> getMyAllergies(User currentUser) {
-        PatientProfile patient = findPatientByUserId(currentUser.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         return allergyRepository.findByPatientId(patient.getId()).stream()
                 .map(allergyMapper::toDto)
@@ -43,7 +41,7 @@ public class AllergyServiceImpl implements AllergyService {
     @Override
     @Audited(action = "ADD_ALLERGY")
     public AllergyResponseDto addAllergy(User currentUser, AllergyRequestDto request) {
-        PatientProfile patient = findPatientByUserId(currentUser.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         Allergy allergy = allergyMapper.toEntity(request);
         allergy.setPatient(patient);
@@ -74,11 +72,5 @@ public class AllergyServiceImpl implements AllergyService {
         return allergyRepository.findByPatientId(patientId).stream()
                 .map(allergyMapper::toDto)
                 .toList();
-    }
-
-    private PatientProfile findPatientByUserId(Long userId) {
-        return patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + userId + "!"));
     }
 }

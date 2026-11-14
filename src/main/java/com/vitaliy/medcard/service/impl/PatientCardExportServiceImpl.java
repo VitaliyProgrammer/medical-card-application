@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PatientCardExportServiceImpl implements PatientCardExportService {
 
     private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
     private final AllergyRepository allergyRepository;
     private final ConditionRepository conditionRepository;
     private final VisitRepository visitRepository;
@@ -32,9 +33,7 @@ public class PatientCardExportServiceImpl implements PatientCardExportService {
 
     @Override
     public byte[] exportMyCard(User currentUser) {
-        PatientProfile patient = patientProfileRepository.findByUserId(currentUser.getId())
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + currentUser.getId() + "!"));
+        PatientProfile patient = patientProfileLookup.getByUserId(currentUser.getId());
 
         return exportCardById(patient.getId());
     }

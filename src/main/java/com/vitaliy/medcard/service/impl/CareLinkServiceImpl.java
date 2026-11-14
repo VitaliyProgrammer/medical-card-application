@@ -6,7 +6,6 @@ import com.vitaliy.medcard.dto.CareLinkResponseDto;
 import com.vitaliy.medcard.dto.PatientSummaryDto;
 import com.vitaliy.medcard.exception.CareLinkAlreadyExistsException;
 import com.vitaliy.medcard.exception.CareLinkNotFoundException;
-import com.vitaliy.medcard.exception.PatientProfileNotFoundException;
 import com.vitaliy.medcard.exception.UserNotFoundException;
 import com.vitaliy.medcard.mapper.CareLinkMapper;
 import com.vitaliy.medcard.model.Allergy;
@@ -16,7 +15,6 @@ import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.model.status.UserRole;
 import com.vitaliy.medcard.repository.AllergyRepository;
 import com.vitaliy.medcard.repository.CareLinkRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.repository.UserRepository;
 import com.vitaliy.medcard.repository.specification.CareLinkSpecifications;
 import com.vitaliy.medcard.service.CareLinkService;
@@ -39,7 +37,7 @@ public class CareLinkServiceImpl implements CareLinkService {
 
     private final CareLinkRepository careLinkRepository;
 
-    private final PatientProfileRepository patientProfileRepository;
+    private final PatientProfileLookup patientProfileLookup;
 
     private final UserRepository userRepository;
 
@@ -51,7 +49,7 @@ public class CareLinkServiceImpl implements CareLinkService {
     @Audited(action = "GRANT_DOCTOR_ACCESS")
     public CareLinkResponseDto grantDoctorAccess(
             User currentPatient, CareLinkRequestDto request) {
-        PatientProfile patient = findPatientByUserId(currentPatient.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentPatient.getId());
 
         User doctor = userRepository.findByEmail(request.doctorEmail())
                 .filter(user -> user.getRole() == UserRole.DOCTOR)
@@ -74,7 +72,7 @@ public class CareLinkServiceImpl implements CareLinkService {
     @Override
     @Transactional(readOnly = true)
     public List<CareLinkResponseDto> getMyDoctors(User currentPatient) {
-        PatientProfile patient = findPatientByUserId(currentPatient.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentPatient.getId());
 
         return careLinkRepository.findByPatientId(patient.getId()).stream()
                 .map(careLinkMapper::toDto)
@@ -84,7 +82,7 @@ public class CareLinkServiceImpl implements CareLinkService {
     @Override
     @Audited(action = "REVOKE_DOCTOR_ACCESS")
     public void revokeDoctorAccess(User currentPatient, Long careLinkId) {
-        PatientProfile patient = findPatientByUserId(currentPatient.getId());
+        PatientProfile patient = patientProfileLookup.getByUserId(currentPatient.getId());
 
         CareLink careLink = careLinkRepository.findByIdAndPatientId(careLinkId, patient.getId())
                 .orElseThrow(() -> new CareLinkNotFoundException(
@@ -122,11 +120,5 @@ public class CareLinkServiceImpl implements CareLinkService {
                     AgeCalculator.calculateAge(patient.getDateOfBirth()),
                     allergiesByPatientId.getOrDefault(patient.getId(), List.of()));
         });
-    }
-
-    private PatientProfile findPatientByUserId(Long userId) {
-        return patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new PatientProfileNotFoundException(
-                        "Patient profile not found for user: " + userId + "!"));
     }
 }

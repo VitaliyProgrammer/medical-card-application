@@ -19,7 +19,6 @@ import com.vitaliy.medcard.model.status.DocumentType;
 import com.vitaliy.medcard.model.PatientProfile;
 import com.vitaliy.medcard.model.User;
 import com.vitaliy.medcard.repository.DocumentRepository;
-import com.vitaliy.medcard.repository.PatientProfileRepository;
 import com.vitaliy.medcard.service.FileStorageService;
 import com.vitaliy.medcard.validation.PatientAccessValidator;
 import java.util.List;
@@ -46,7 +45,7 @@ class DocumentServiceImplTest {
     private DocumentRepository documentRepository;
 
     @Mock
-    private PatientProfileRepository patientProfileRepository;
+    private PatientProfileLookup patientProfileLookup;
 
     @Mock
     private FileStorageService fileStorageService;
@@ -99,8 +98,8 @@ class DocumentServiceImplTest {
                 100L, DocumentType.LAB_RESULT, "blood-test.pdf", "application/pdf", 7L,
                 "Jane Patient", null);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
         when(documentRepository.save(any(Document.class))).thenReturn(document);
         when(documentMapper.toDto(document)).thenReturn(responseDto);
@@ -118,8 +117,8 @@ class DocumentServiceImplTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "virus.exe", "application/x-msdownload", "content".getBytes());
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
 
         assertThrows(UnsupportedFileTypeException.class,
                 () -> documentService.uploadMyDocument(patientUser, file, DocumentType.OTHER));
@@ -133,8 +132,8 @@ class DocumentServiceImplTest {
         MockMultipartFile emptyFile = new MockMultipartFile(
                 "file", "empty.pdf", "application/pdf", new byte[0]);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
 
         assertThrows(UnsupportedFileTypeException.class,
                 () -> documentService.uploadMyDocument(patientUser, emptyFile, DocumentType.OTHER));
@@ -146,8 +145,8 @@ class DocumentServiceImplTest {
         MockMultipartFile spoofed = new MockMultipartFile(
                 "file", "report.pdf", "application/pdf", "MZ executable bytes".getBytes());
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
 
         assertThrows(UnsupportedFileTypeException.class,
                 () -> documentService.uploadMyDocument(patientUser, spoofed, DocumentType.OTHER));
@@ -189,8 +188,8 @@ class DocumentServiceImplTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
         when(documentRepository.save(any(Document.class))).thenReturn(document);
 
@@ -207,8 +206,8 @@ class DocumentServiceImplTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "blood-test.pdf", "application/pdf", PDF_CONTENT);
 
-        when(patientProfileRepository.findByUserId(patientUser.getId()))
-                .thenReturn(Optional.of(patient));
+        when(patientProfileLookup.getByUserId(patientUser.getId()))
+                .thenReturn(patient);
         when(fileStorageService.store(file)).thenReturn("uuid_blood-test.pdf");
         when(documentRepository.save(any(Document.class))).thenReturn(document);
 
